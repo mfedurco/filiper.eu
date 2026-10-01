@@ -1,0 +1,104 @@
+# Týždenné úlohy – každý týždeň sa hráčovi náhodne priradia z poolu.
+
+pool:
+  w_wood:
+    name: "Týždeň drevorubača"
+    description: "Získaj 200 klád počas týždňa."
+    type: BREAK_BLOCK
+    targets: [OAK_LOG, BIRCH_LOG, SPRUCE_LOG, DARK_OAK_LOG, JUNGLE_LOG, ACACIA_LOG, MANGROVE_LOG, CHERRY_LOG]
+    amount: 200
+    points: 40
+    min-chapter: 1
+    rewards:
+      - material: IRON_INGOT
+        amount: 12
+
+  w_stone:
+    name: "Kameňolom týždňa"
+    description: "Vyťaž 300 kameňa."
+    type: BREAK_BLOCK
+    targets: [STONE, COBBLESTONE, DEEPSLATE, COBBLED_DEEPSLATE]
+    amount: 300
+    points: 40
+    min-chapter: 1
+    rewards:
+      - material: COAL
+        amount: 32
+
+  w_build:
+    name: "Staviteľský týždeň"
+    description: "Polož 250 blokov."
+    type: PLACE_BLOCK
+    targets: [ANY_SOLID]
+    amount: 250
+    points: 45
+    min-chapter: 2
+    rewards:
+      - material: EMERALD
+        amount: 4
+
+  w_iron:
+    name: "Železný týždeň"
+    description: "Vyťaž 64 železnej rudy."
+    type: BREAK_BLOCK
+    targets: [IRON_ORE, DEEPSLATE_IRON_ORE]
+    amount: 64
+    points: 55
+    min-chapter: 3
+    rewards:
+      - material: IRON_BLOCK
+        amount: 2
+
+  w_mobs:
+    name: "Hliadka týždňa"
+    description: "Zabi 60 nepriateľských mobov."
+    type: KILL_ENTITY
+    targets: [ZOMBIE, SKELETON, CREEPER, SPIDER, ENDERMAN, WITCH, HUSK, STRAY, DROWNED]
+    amount: 60
+    points: 55
+    min-chapter: 4
+    rewards:
+      - material: GOLDEN_APPLE
+        amount: 2
+      - material: ARROW
+        amount: 32
+
+  w_farm:
+    name: "Žatva týždňa"
+    description: "Pozbieraj 80 pšenice."
+    type: BREAK_BLOCK
+    targets: [WHEAT]
+    amount: 80
+    points: 45
+    min-chapter: 5
+    rewards:
+      - material: BREAD
+        amount: 24
+      - material: HAY_BLOCK
+        amount: 4
+
+  w_diamond:
+    name: "Diamantový týždeň"
+    description: "Vyťaž 8 diamantových rúd."
+    type: BREAK_BLOCK
+    targets: [DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE]
+    amount: 8
+    points: 70
+    min-chapter: 6
+    rewards:
+      - material: DIAMOND
+        amount: 3
+
+  w_nether:
+    name: "Netherovský týždeň"
+    description: "Zabi 15 blaze."
+    type: KILL_ENTITY
+    targets: [BLAZE]
+    amount: 15
+    points: 75
+    min-chapter: 7
+    rewards:
+      - material: BLAZE_ROD
+        amount: 8
+      - material: GOLD_INGOT
+        amount: 12

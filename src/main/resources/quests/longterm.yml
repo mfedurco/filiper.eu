@@ -1,0 +1,86 @@
+# Dlhodobé / sezónne ciele – trvajú celú sezónu, kým nie sú splnené.
+
+pool:
+  l_explorer:
+    name: "Prieskumník sezóny"
+    description: "Polož 1000 stavebných blokov počas sezóny."
+    type: PLACE_BLOCK
+    targets: [ANY_SOLID]
+    amount: 1000
+    points: 150
+    min-chapter: 1
+    rewards:
+      - material: DIAMOND
+        amount: 4
+      - material: EXPERIENCE_BOTTLE
+        amount: 16
+
+  l_miner:
+    name: "Baník sezóny"
+    description: "Vyťaž 400 železnej rudy."
+    type: BREAK_BLOCK
+    targets: [IRON_ORE, DEEPSLATE_IRON_ORE]
+    amount: 400
+    points: 180
+    min-chapter: 3
+    rewards:
+      - material: IRON_BLOCK
+        amount: 8
+      - material: DIAMOND
+        amount: 6
+
+  l_hunter:
+    name: "Lovec sezóny"
+    description: "Zabi 250 nepriateľských mobov."
+    type: KILL_ENTITY
+    targets: [ZOMBIE, SKELETON, CREEPER, SPIDER, ENDERMAN, WITCH, HUSK, STRAY, DROWNED, BLAZE]
+    amount: 250
+    points: 180
+    min-chapter: 4
+    rewards:
+      - material: ENCHANTED_GOLDEN_APPLE
+        amount: 1
+      - material: GOLDEN_APPLE
+        amount: 8
+
+  l_farmer:
+    name: "Farmár sezóny"
+    description: "Pozbieraj 400 pšenice."
+    type: BREAK_BLOCK
+    targets: [WHEAT]
+    amount: 400
+    points: 140
+    min-chapter: 5
+    rewards:
+      - material: HAY_BLOCK
+        amount: 16
+      - material: GOLDEN_CARROT
+        amount: 16
+
+  l_diamond:
+    name: "Diamantová sezóna"
+    description: "Vyťaž 40 diamantových rúd."
+    type: BREAK_BLOCK
+    targets: [DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE]
+    amount: 40
+    points: 220
+    min-chapter: 6
+    rewards:
+      - material: DIAMOND_BLOCK
+        amount: 2
+      - material: NETHERITE_SCRAP
+        amount: 1
+
+  l_nether:
+    name: "Pekelná sezóna"
+    description: "Zabi 80 blaze."
+    type: KILL_ENTITY
+    targets: [BLAZE]
+    amount: 80
+    points: 240
+    min-chapter: 7
+    rewards:
+      - material: NETHERITE_SCRAP
+        amount: 2
+      - material: BLAZE_ROD
+        amount: 24

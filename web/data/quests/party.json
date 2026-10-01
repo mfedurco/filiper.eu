@@ -1,0 +1,152 @@
+{
+  "pool": [
+    {
+      "id": "p_wood",
+      "name": "Triedny les",
+      "description": "Spoločne získajte 120 klád.",
+      "type": "BREAK_BLOCK",
+      "targets": [
+        "OAK_LOG",
+        "BIRCH_LOG",
+        "SPRUCE_LOG",
+        "DARK_OAK_LOG",
+        "JUNGLE_LOG",
+        "ACACIA_LOG",
+        "MANGROVE_LOG",
+        "CHERRY_LOG"
+      ],
+      "amount": 120,
+      "points": 30,
+      "minChapter": 1,
+      "rewards": [
+        {
+          "material": "IRON_INGOT",
+          "amount": 8
+        },
+        {
+          "material": "COOKED_BEEF",
+          "amount": 16
+        }
+      ]
+    },
+    {
+      "id": "p_mine",
+      "name": "Banícka partia",
+      "description": "Spoločne vyťažte 80 železnej rudy.",
+      "type": "BREAK_BLOCK",
+      "targets": [
+        "IRON_ORE",
+        "DEEPSLATE_IRON_ORE"
+      ],
+      "amount": 80,
+      "points": 40,
+      "minChapter": 3,
+      "rewards": [
+        {
+          "material": "DIAMOND",
+          "amount": 2
+        },
+        {
+          "material": "IRON_BLOCK",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "p_mobs",
+      "name": "Nočná hliadka triedy",
+      "description": "Spoločne zabite 50 nepriateľských mobov.",
+      "type": "KILL_ENTITY",
+      "targets": [
+        "ZOMBIE",
+        "SKELETON",
+        "CREEPER",
+        "SPIDER",
+        "ENDERMAN",
+        "WITCH",
+        "HUSK",
+        "STRAY",
+        "DROWNED"
+      ],
+      "amount": 50,
+      "points": 40,
+      "minChapter": 4,
+      "rewards": [
+        {
+          "material": "GOLDEN_APPLE",
+          "amount": 4
+        },
+        {
+          "material": "ARROW",
+          "amount": 64
+        }
+      ]
+    },
+    {
+      "id": "p_build",
+      "name": "Spoločná stavba",
+      "description": "Spoločne položte 200 blokov.",
+      "type": "PLACE_BLOCK",
+      "targets": [
+        "ANY_SOLID"
+      ],
+      "amount": 200,
+      "points": 35,
+      "minChapter": 2,
+      "rewards": [
+        {
+          "material": "EMERALD",
+          "amount": 6
+        },
+        {
+          "material": "EXPERIENCE_BOTTLE",
+          "amount": 8
+        }
+      ]
+    },
+    {
+      "id": "p_nether",
+      "name": "Výprava do Netheru",
+      "description": "Spoločne zabite 20 blaze.",
+      "type": "KILL_ENTITY",
+      "targets": [
+        "BLAZE"
+      ],
+      "amount": 20,
+      "points": 50,
+      "minChapter": 7,
+      "rewards": [
+        {
+          "material": "NETHERITE_SCRAP",
+          "amount": 1
+        },
+        {
+          "material": "BLAZE_ROD",
+          "amount": 8
+        }
+      ]
+    },
+    {
+      "id": "p_dragon",
+      "name": "Triedny drak",
+      "description": "Spoločne zabiť Ender Dragona.",
+      "type": "KILL_ENTITY",
+      "targets": [
+        "ENDER_DRAGON"
+      ],
+      "amount": 1,
+      "points": 100,
+      "minChapter": 8,
+      "rewards": [
+        {
+          "material": "DIAMOND_BLOCK",
+          "amount": 1
+        },
+        {
+          "material": "ENCHANTED_GOLDEN_APPLE",
+          "amount": 2
+        }
+      ]
+    }
+  ]
+}

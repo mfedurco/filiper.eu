@@ -1,0 +1,19 @@
+# Vyprava – nastavenia
+daily-quest-count: 3
+party-quest-count: 1
+timezone: Europe/Bratislava
+
+# HTTP API pre web dashboard (hraci + admin mimo MC serveru)
+web:
+  enabled: true
+  bind: 0.0.0.0
+  port: 8765
+  # Volitelny token; web posiela header X-Vyprava-Token
+  api-token: ""
+
+messages:
+  prefix: "<gold><bold>Vyprava</bold></gold> <dark_gray>»</dark_gray> "
+  daily-reset: "<green>Nove denne ulohy su pripravene! Napis <yellow>/vyprava denne</yellow>.</green>"
+  chapter-complete: "<gold><bold>Kapitola dokoncena!</bold></gold> <gray>{chapter}</gray>"
+  quest-complete: "<green>Uloha splnena:</green> <yellow>{quest}</yellow> <gray>(+{points} bodov)</gray>"
+  reward-given: "<aqua>Odmena:</aqua> <white>{reward}</white>"
