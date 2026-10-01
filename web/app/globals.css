@@ -1,46 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --pine-950: #0f1f17;
-  --pine-900: #163024;
-  --pine-800: #1f4533;
-  --pine-700: #2a5a42;
-  --pine-600: #3a7354;
-  --pine-100: #e4efe7;
-  --ember-500: #d9772c;
-  --ember-400: #e8943f;
-  --ember-300: #f0b35c;
-  --ink: #1a211c;
-  --ink-muted: #4a5850;
-  --parchment: #f3efe4;
-  --parchment-deep: #e8e0cf;
+  --moss-950: #0a1210;
+  --moss-900: #0f1c17;
+  --moss-800: #173028;
+  --moss-700: #234538;
+  --moss-600: #356b54;
+  --moss-500: #4a7a58;
+  --moss-100: #d5e4d8;
+  --moss-50: #eef5ef;
+  --lantern: #c4a35a;
+  --lantern-soft: #d8bc76;
   --mist: #c9d6cc;
-  --surface: rgba(243, 239, 228, 0.78);
-  --surface-strong: rgba(243, 239, 228, 0.94);
-  --line: rgba(26, 33, 28, 0.12);
-  --shadow: 0 18px 50px rgba(15, 31, 23, 0.18);
-  --radius: 1rem;
-  --background: var(--parchment);
+  --mist-muted: #8fa194;
+  --ink: #e8f0ea;
+  --line: rgba(201, 214, 204, 0.14);
+  --surface: rgba(15, 28, 23, 0.72);
+  --surface-strong: rgba(15, 28, 23, 0.9);
+  --background: var(--moss-950);
   --foreground: var(--ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-pine-950: var(--pine-950);
-  --color-pine-900: var(--pine-900);
-  --color-pine-800: var(--pine-800);
-  --color-pine-700: var(--pine-700);
-  --color-pine-600: var(--pine-600);
-  --color-pine-100: var(--pine-100);
-  --color-ember-500: var(--ember-500);
-  --color-ember-400: var(--ember-400);
-  --color-ember-300: var(--ember-300);
-  --color-ink: var(--ink);
-  --color-ink-muted: var(--ink-muted);
-  --color-parchment: var(--parchment);
-  --color-parchment-deep: var(--parchment-deep);
+  --color-moss-950: var(--moss-950);
+  --color-moss-900: var(--moss-900);
+  --color-moss-800: var(--moss-800);
+  --color-moss-700: var(--moss-700);
+  --color-moss-600: var(--moss-600);
+  --color-moss-500: var(--moss-500);
+  --color-moss-100: var(--moss-100);
+  --color-moss-50: var(--moss-50);
+  --color-lantern: var(--lantern);
   --color-mist: var(--mist);
+  --color-mist-muted: var(--mist-muted);
+  --color-ink: var(--ink);
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-dm-sans);
 }
@@ -58,9 +53,9 @@ body {
   min-height: 100%;
   color: var(--ink);
   background:
-    radial-gradient(ellipse 90% 60% at 10% -10%, rgba(58, 115, 84, 0.28), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 95% 5%, rgba(217, 119, 44, 0.16), transparent 50%),
-    linear-gradient(165deg, #dfe9e1 0%, var(--parchment) 42%, #ebe4d4 100%);
+    radial-gradient(ellipse 80% 55% at 12% -8%, rgba(74, 122, 88, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 92% 0%, rgba(196, 163, 90, 0.12), transparent 50%),
+    linear-gradient(165deg, #0c1713 0%, var(--moss-950) 45%, #101a16 100%);
   font-family: var(--font-dm-sans), "Segoe UI", sans-serif;
 }
 
@@ -70,12 +65,18 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: 0;
-  opacity: 0.35;
+  opacity: 0.22;
   background-image:
-    linear-gradient(rgba(26, 33, 28, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 33, 28, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+    linear-gradient(rgba(201, 214, 204, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 214, 204, 0.04) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(ellipse at center, black 35%, transparent 80%);
+}
+
+.hero-sky {
+  background:
+    linear-gradient(180deg, rgba(28, 48, 40, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(196, 163, 90, 0.08), transparent 60%);
 }
 
 main,
@@ -91,7 +92,7 @@ a {
 }
 
 ::selection {
-  background: rgba(217, 119, 44, 0.28);
+  background: rgba(196, 163, 90, 0.35);
 }
 
 @keyframes fade-up {
@@ -181,18 +182,18 @@ a {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.85rem 1.35rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--pine-800), var(--pine-700));
-  color: var(--parchment);
+  border-radius: 0.4rem;
+  background: linear-gradient(135deg, var(--moss-600), var(--moss-700));
+  color: var(--moss-50);
   font-weight: 600;
   letter-spacing: 0.01em;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  box-shadow: 0 10px 24px rgba(22, 48, 36, 0.25);
+  box-shadow: 0 10px 24px rgba(10, 18, 16, 0.35);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, var(--pine-700), var(--pine-600));
+  background: linear-gradient(135deg, var(--moss-500), var(--moss-600));
 }
 
 .btn-secondary {
@@ -201,17 +202,17 @@ a {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.85rem 1.35rem;
-  border-radius: 999px;
+  border-radius: 0.4rem;
   background: transparent;
-  color: var(--ink);
-  border: 1.5px solid rgba(26, 33, 28, 0.22);
+  color: var(--moss-50);
+  border: 1.5px solid rgba(201, 214, 204, 0.28);
   font-weight: 600;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
 .btn-secondary:hover {
-  border-color: var(--ember-500);
-  background: rgba(217, 119, 44, 0.08);
+  border-color: var(--lantern);
+  background: rgba(196, 163, 90, 0.08);
   transform: translateY(-1px);
 }
 
@@ -220,23 +221,38 @@ a {
   align-items: center;
   gap: 0.35rem;
   padding: 0.28rem 0.7rem;
-  border-radius: 999px;
+  border-radius: 0.3rem;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(31, 69, 51, 0.1);
-  color: var(--pine-800);
+  background: rgba(74, 122, 88, 0.2);
+  color: var(--moss-100);
 }
 
 .badge-ember {
-  background: rgba(217, 119, 44, 0.14);
-  color: #9a4d12;
+  background: rgba(196, 163, 90, 0.16);
+  color: var(--lantern-soft);
 }
 
 .section-shell {
   width: min(1120px, calc(100% - 2rem));
   margin-inline: auto;
+}
+
+.text-ink-muted {
+  color: var(--mist-muted);
+}
+
+.text-pine-950,
+.text-pine-900,
+.text-pine-800,
+.text-pine-700 {
+  color: var(--moss-50);
+}
+
+.text-ember-500 {
+  color: var(--lantern);
 }
 
 @media (prefers-reduced-motion: reduce) {

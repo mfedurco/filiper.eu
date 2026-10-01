@@ -1,0 +1,93 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getSharedGoals } from "@/lib/data";
+import { EmptyState, ErrorState, PageHero } from "@/components/ui";
+
+export const metadata: Metadata = {
+  title: "Spoločné ciele",
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function SpolocnePage() {
+  let goals;
+  try {
+    goals = await getSharedGoals();
+  } catch {
+    return (
+      <main className="pb-16 pt-8">
+        <PageHero title="Spoločné ciele" />
+        <ErrorState description="Nepodarilo sa načítať spoločné ciele." />
+      </main>
+    );
+  }
+
+  return (
+    <main className="pb-20 pt-8">
+      <PageHero
+        eyebrow="Celý server spolu"
+        title="Spoločné ciele"
+        description="Postavte most, vyťažte železo, držte nočnú hliadku — každý príspevok sa počíta. Po splnení dostanú odmenu všetci prispievatelia."
+      >
+        <Link href="/rebricek" className="btn-secondary">
+          Rebríček
+        </Link>
+      </PageHero>
+
+      {!goals.length ? (
+        <EmptyState
+          title="Žiadne aktívne spoločné ciele"
+          description="Plugin rotuje spoločné ciele každý týždeň."
+        />
+      ) : (
+        <div className="section-shell space-y-10">
+          {goals.map((goal) => {
+            const pct = Math.min(100, Math.round((goal.progress / goal.amount) * 100));
+            return (
+              <article key={goal.id} className="border-t border-[var(--line)] pt-6">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lantern">
+                      {goal.completed ? "Splnené" : `${goal.progress} / ${goal.amount}`}
+                    </p>
+                    <h2 className="font-display mt-2 text-3xl text-moss-50">{goal.name}</h2>
+                    <p className="mt-2 max-w-2xl text-sm text-mist-muted">{goal.description}</p>
+                  </div>
+                  <p className="text-sm text-mist-muted">+{goal.points} bodov</p>
+                </div>
+
+                <div className="mt-5 h-2 overflow-hidden rounded-sm bg-[rgba(196,214,198,0.12)]">
+                  <div
+                    className="animate-progress h-full origin-left rounded-sm bg-gradient-to-r from-moss-500 to-lantern"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-mist-muted">
+                    Príspevky hráčov
+                  </h3>
+                  <ul className="mt-3 space-y-2">
+                    {goal.contributions.length === 0 ? (
+                      <li className="text-sm text-mist-muted">Zatiaľ bez príspevkov.</li>
+                    ) : (
+                      goal.contributions.map((c) => (
+                        <li
+                          key={`${goal.id}-${c.name}`}
+                          className="flex items-center justify-between border-b border-[var(--line)] py-2 text-sm"
+                        >
+                          <span className="text-moss-50">{c.name}</span>
+                          <span className="text-lantern">+{c.amount}</span>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </main>
+  );
+}
