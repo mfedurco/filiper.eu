@@ -1,4 +1,7 @@
 # Výprava – príklad konfigurácie. Tajomstvá sem nepatria.
+# Povinné pri zapnutej databáze. Každý server má vlastný reťazec. Bez predvolenej hodnoty.
+server-id: ""
+
 database:
   enabled: false
   jdbc-url: ""

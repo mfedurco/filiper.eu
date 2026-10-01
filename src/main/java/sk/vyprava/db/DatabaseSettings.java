@@ -11,17 +11,20 @@ import java.util.List;
 public final class DatabaseSettings {
     private final boolean enabled;
     private final String jdbcUrl;
+    private final String serverId;
 
-    private DatabaseSettings(boolean enabled, String jdbcUrl) {
+    private DatabaseSettings(boolean enabled, String jdbcUrl, String serverId) {
         this.enabled = enabled;
         this.jdbcUrl = jdbcUrl;
+        this.serverId = serverId;
     }
 
     public static DatabaseSettings from(FileConfiguration config, Path dataFolder) {
         boolean enabled = config.getBoolean("database.enabled", false);
         String configured = blankToNull(config.getString("database.jdbc-url", ""));
         String url = configured != null ? configured : readUnpooledUrl(dataFolder);
-        return new DatabaseSettings(enabled, url);
+        String serverId = blankToNull(config.getString("server-id", ""));
+        return new DatabaseSettings(enabled, url, serverId);
     }
 
     public boolean enabled() {
@@ -30,6 +33,10 @@ public final class DatabaseSettings {
 
     public String jdbcUrl() {
         return jdbcUrl;
+    }
+
+    public String serverId() {
+        return serverId;
     }
 
     public static String readUnpooledUrl(Path dataFolder) {

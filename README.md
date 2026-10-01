@@ -34,8 +34,8 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 1. Copy `build/libs/filiper.eu-vyprava.jar` into the Paper `plugins/` folder.
 2. Start Paper `26.2-124` (Java 25).
 3. Edit `plugins/filiper.eu-vyprava/config.yml` (counts, timezone, web API).
-4. Quest definitions are **not** loaded from YAML. They come from the active expedition in Postgres (`web/neon/002_expeditions.sql`). Set `database.enabled: true` and a direct `database.jdbc-url`, or export `DATABASE_URL_UNPOOLED` (the plugin also reads `.env.local` next to the server). Leave the URL empty in git. YAML under `plugins/filiper.eu-vyprava/data/` is only the player-progress outbox: every change is saved there first and pushed asynchronously, retrying until Neon accepts it.
-5. The plugin checks expedition `starts_at` / `ends_at` in `Europe/Bratislava` on startup and about once a minute. The window that contains now becomes the single active expedition.
+4. Quest definitions are **not** loaded from YAML. They come from the active expedition for this server in Postgres (`web/neon/003_server_scope.sql`). Set `database.enabled: true`, a non-empty `server-id` (one free string per deployment, for example `test`, `survival`, `creative`), and a direct `database.jdbc-url`, or export `DATABASE_URL_UNPOOLED` (the plugin also reads `.env.local` next to the server). Leave the URL empty in git. There is no default `server-id`; a blank value refuses database writes. YAML under `plugins/filiper.eu-vyprava/data/` is only the player-progress outbox: every change is saved there first and pushed asynchronously, retrying until Neon accepts it.
+5. The plugin checks expedition `starts_at` / `ends_at` in `Europe/Bratislava` on startup and about once a minute, but only among expeditions with this `server-id`. The window that contains now becomes the one active expedition for that server. Another server's copy is a separate row.
 
 ### Commands
 

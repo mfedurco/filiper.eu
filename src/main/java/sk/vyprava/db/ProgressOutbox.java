@@ -64,7 +64,7 @@ public final class ProgressOutbox {
                 }
             }
             for (PartySnapshot snapshot : slice.parties.values()) {
-                if (snapshot.pending() && snapshot.questKey() != null && !snapshot.questKey().isBlank()) {
+                if (snapshot.pending()) {
                     parties.add(new OutboxBatch.PartyPush(expeditionId, snapshot));
                 }
             }

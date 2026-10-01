@@ -1,7 +1,9 @@
 -- Expeditions (výpravy) and quest definitions.
 -- Player progress, contributions, shared state, and leaderboard rows are scoped
 -- by expedition_id. Demo rows stay untouched (their expedition_id remains null).
--- Re-running upserts the seeded expedition cesta-prezivsich; it does not truncate.
+-- Re-running upserts only the original expedition row
+-- 22222222-2222-2222-2222-222222222201. Copies on other servers are separate rows.
+-- Server scope, including one active expedition per server, is in 003_server_scope.sql.
 -- Seeded quests: 78
 
 create extension if not exists pgcrypto;
@@ -34,9 +36,9 @@ create table if not exists expeditions (
   created_at timestamptz not null default now()
 );
 
-create unique index if not exists expeditions_one_active
-  on expeditions (status)
-  where status = 'active';
+-- One active expedition per server is enforced in 003_server_scope.sql.
+-- Re-applying this file must not restore a single global active expedition.
+drop index if exists expeditions_one_active;
 
 create table if not exists quest_definitions (
   id uuid primary key default gen_random_uuid(),
@@ -164,7 +166,11 @@ create policy "Public read expeditions" on expeditions for select using (true);
 drop policy if exists "Public read quest definitions" on quest_definitions;
 create policy "Public read quest definitions" on quest_definitions for select using (true);
 
-create or replace function apply_expedition_schedule(as_of timestamptz)
+-- Scheduling is per server. The old one-argument function switched every server at once.
+drop function if exists apply_expedition_schedule(timestamptz);
+drop function if exists end_active_expedition();
+
+create or replace function apply_expedition_schedule(as_of timestamptz, p_server text)
 returns table (changed boolean, active_id uuid, active_slug text, ended_slug text)
 language plpgsql
 as $$
@@ -174,11 +180,15 @@ declare
   ended_list text := '';
   rec record;
 begin
-  perform pg_advisory_xact_lock(48271001);
+  if p_server is null or btrim(p_server) = '' then
+    raise exception 'server id is required';
+  end if;
+  perform pg_advisory_xact_lock(48271001, hashtext(p_server));
 
   select e.id into winner
   from expeditions e
-  where e.status in ('draft', 'active')
+  where e.server_id = p_server
+    and e.status in ('draft', 'active')
     and e.starts_at is not null
     and e.starts_at <= as_of
     and (e.ends_at is null or e.ends_at > as_of)
@@ -188,7 +198,7 @@ begin
   if winner is not null then
     for rec in
       select id, slug from expeditions
-      where status = 'active' and id <> winner
+      where server_id = p_server and status = 'active' and id <> winner
     loop
       update expeditions set status = 'ended' where id = rec.id;
       ended_list := case when ended_list = '' then rec.slug else ended_list || ',' || rec.slug end;
@@ -201,7 +211,8 @@ begin
   else
     for rec in
       select id, slug from expeditions
-      where status = 'active'
+      where server_id = p_server
+        and status = 'active'
         and ends_at is not null
         and ends_at <= as_of
     loop
@@ -213,7 +224,7 @@ begin
 
   select e.id, e.slug into active_id, active_slug
   from expeditions e
-  where e.status = 'active'
+  where e.server_id = p_server and e.status = 'active'
   limit 1;
 
   changed := did;
@@ -222,13 +233,16 @@ begin
 end;
 $$;
 
-create or replace function end_active_expedition()
+create or replace function end_active_expedition(p_server text)
 returns void
 language plpgsql
 as $$
 begin
-  perform pg_advisory_xact_lock(48271001);
-  update expeditions set status = 'ended' where status = 'active';
+  if p_server is null or btrim(p_server) = '' then
+    raise exception 'server id is required';
+  end if;
+  perform pg_advisory_xact_lock(48271001, hashtext(p_server));
+  update expeditions set status = 'ended' where status = 'active' and server_id = p_server;
 end;
 $$;
 
@@ -236,12 +250,15 @@ create or replace function activate_expedition(target uuid)
 returns void
 language plpgsql
 as $$
+declare
+  srv text;
 begin
-  perform pg_advisory_xact_lock(48271001);
-  if not exists (select 1 from expeditions where id = target and status = 'draft') then
+  select server_id into srv from expeditions where id = target and status = 'draft';
+  if srv is null then
     raise exception 'expedition % is not a draft', target;
   end if;
-  update expeditions set status = 'ended' where status = 'active';
+  perform pg_advisory_xact_lock(48271001, hashtext(srv));
+  update expeditions set status = 'ended' where status = 'active' and server_id = srv and id <> target;
   update expeditions set status = 'active' where id = target;
 end;
 $$;
@@ -255,8 +272,9 @@ select
   'active',
   timestamptz '2026-09-01 00:00:00 Europe/Bratislava',
   timestamptz '2027-06-30 23:59:59 Europe/Bratislava'
-where not exists (select 1 from expeditions where slug = 'cesta-prezivsich')
-  and not exists (select 1 from expeditions where status = 'active');
+where not exists (
+  select 1 from expeditions where id = '22222222-2222-2222-2222-222222222201'
+);
 
 insert into quest_definitions (
   expedition_id, stable_key, kind, title, description, points, target_count,
@@ -269,7 +287,7 @@ select e.id, 'c1_wood', 'kampan'::quest_kind, 'Zberač dreva', 'Získaj 32 dubov
   'chapter_1', 1, 'Základy', 'Prvý deň v divočine. Drevo, kameň, jedlo.',
   'Prvý tábor', 50, '[{"material": "IRON_INGOT", "amount": 8}, {"material": "BREAD", "amount": 16}, {"material": "TORCH", "amount": 32}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -301,7 +319,7 @@ select e.id, 'c1_table', 'kampan'::quest_kind, 'Dielňa', 'Vyrob crafting table.
   'chapter_1', 1, 'Základy', 'Prvý deň v divočine. Drevo, kameň, jedlo.',
   'Prvý tábor', 50, '[{"material": "IRON_INGOT", "amount": 8}, {"material": "BREAD", "amount": 16}, {"material": "TORCH", "amount": 32}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -333,7 +351,7 @@ select e.id, 'c1_pick', 'kampan'::quest_kind, 'Prvý nástroj', 'Vyrob drevený 
   'chapter_1', 1, 'Základy', 'Prvý deň v divočine. Drevo, kameň, jedlo.',
   'Prvý tábor', 50, '[{"material": "IRON_INGOT", "amount": 8}, {"material": "BREAD", "amount": 16}, {"material": "TORCH", "amount": 32}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -365,7 +383,7 @@ select e.id, 'c1_stone', 'kampan'::quest_kind, 'Kameňolom', 'Vyťaž 24 kameňa
   'chapter_1', 1, 'Základy', 'Prvý deň v divočine. Drevo, kameň, jedlo.',
   'Prvý tábor', 50, '[{"material": "IRON_INGOT", "amount": 8}, {"material": "BREAD", "amount": 16}, {"material": "TORCH", "amount": 32}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -397,7 +415,7 @@ select e.id, 'c1_food', 'kampan'::quest_kind, 'Večera', 'Upeč 8 kusov mäsa (s
   'chapter_1', 1, 'Základy', 'Prvý deň v divočine. Drevo, kameň, jedlo.',
   'Prvý tábor', 50, '[{"material": "IRON_INGOT", "amount": 8}, {"material": "BREAD", "amount": 16}, {"material": "TORCH", "amount": 32}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -429,7 +447,7 @@ select e.id, 'c2_bed', 'kampan'::quest_kind, 'Posteľ', 'Vyrob posteľ.', 15, 1,
   'chapter_2', 2, 'Domov', 'Postav si bezpečné zázemie.',
   'Vlastný dom', 75, '[{"material": "IRON_INGOT", "amount": 16}, {"material": "GOLDEN_APPLE", "amount": 2}, {"material": "EXPERIENCE_BOTTLE", "amount": 8}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -461,7 +479,7 @@ select e.id, 'c2_chest', 'kampan'::quest_kind, 'Sklad', 'Vyrob 2 truhlice.', 10,
   'chapter_2', 2, 'Domov', 'Postav si bezpečné zázemie.',
   'Vlastný dom', 75, '[{"material": "IRON_INGOT", "amount": 16}, {"material": "GOLDEN_APPLE", "amount": 2}, {"material": "EXPERIENCE_BOTTLE", "amount": 8}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -493,7 +511,7 @@ select e.id, 'c2_furnace', 'kampan'::quest_kind, 'Pec', 'Vyrob pec.', 10, 1,
   'chapter_2', 2, 'Domov', 'Postav si bezpečné zázemie.',
   'Vlastný dom', 75, '[{"material": "IRON_INGOT", "amount": 16}, {"material": "GOLDEN_APPLE", "amount": 2}, {"material": "EXPERIENCE_BOTTLE", "amount": 8}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -525,7 +543,7 @@ select e.id, 'c2_build', 'kampan'::quest_kind, 'Staviteľ', 'Polož 64 stavebný
   'chapter_2', 2, 'Domov', 'Postav si bezpečné zázemie.',
   'Vlastný dom', 75, '[{"material": "IRON_INGOT", "amount": 16}, {"material": "GOLDEN_APPLE", "amount": 2}, {"material": "EXPERIENCE_BOTTLE", "amount": 8}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -557,7 +575,7 @@ select e.id, 'c2_doors', 'kampan'::quest_kind, 'Vchod', 'Vyrob dvere.', 10, 1,
   'chapter_2', 2, 'Domov', 'Postav si bezpečné zázemie.',
   'Vlastný dom', 75, '[{"material": "IRON_INGOT", "amount": 16}, {"material": "GOLDEN_APPLE", "amount": 2}, {"material": "EXPERIENCE_BOTTLE", "amount": 8}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -589,7 +607,7 @@ select e.id, 'c3_coal', 'kampan'::quest_kind, 'Uhlík', 'Vyťaž 32 uhlia.', 20,
   'chapter_3', 3, 'Baník', 'Zostúp do jaskýň a prinies ore.',
   'Hlbiny', 100, '[{"material": "DIAMOND", "amount": 3}, {"material": "IRON_BLOCK", "amount": 2}, {"material": "GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -621,7 +639,7 @@ select e.id, 'c3_iron', 'kampan'::quest_kind, 'Železná žila', 'Vyťaž 24 že
   'chapter_3', 3, 'Baník', 'Zostúp do jaskýň a prinies ore.',
   'Hlbiny', 100, '[{"material": "DIAMOND", "amount": 3}, {"material": "IRON_BLOCK", "amount": 2}, {"material": "GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -653,7 +671,7 @@ select e.id, 'c3_smelt_iron', 'kampan'::quest_kind, 'Hutník', 'Vyrob 24 železn
   'chapter_3', 3, 'Baník', 'Zostúp do jaskýň a prinies ore.',
   'Hlbiny', 100, '[{"material": "DIAMOND", "amount": 3}, {"material": "IRON_BLOCK", "amount": 2}, {"material": "GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -685,7 +703,7 @@ select e.id, 'c3_iron_pick', 'kampan'::quest_kind, 'Lepší nástroj', 'Vyrob ž
   'chapter_3', 3, 'Baník', 'Zostúp do jaskýň a prinies ore.',
   'Hlbiny', 100, '[{"material": "DIAMOND", "amount": 3}, {"material": "IRON_BLOCK", "amount": 2}, {"material": "GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -717,7 +735,7 @@ select e.id, 'c3_diamond', 'kampan'::quest_kind, 'Prvý diamant', 'Vyťaž 1 dia
   'chapter_3', 3, 'Baník', 'Zostúp do jaskýň a prinies ore.',
   'Hlbiny', 100, '[{"material": "DIAMOND", "amount": 3}, {"material": "IRON_BLOCK", "amount": 2}, {"material": "GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -749,7 +767,7 @@ select e.id, 'c4_zombie', 'kampan'::quest_kind, 'Lov zombie', 'Zabi 15 zombie.',
   'chapter_4', 4, 'Lovec', 'Nauč sa brániť v noci.',
   'Nočný lovec', 100, '[{"material": "ENCHANTED_GOLDEN_APPLE", "amount": 1}, {"material": "ARROW", "amount": 64}, {"material": "DIAMOND", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -781,7 +799,7 @@ select e.id, 'c4_skeleton', 'kampan'::quest_kind, 'Lov kostlivcov', 'Zabi 10 kos
   'chapter_4', 4, 'Lovec', 'Nauč sa brániť v noci.',
   'Nočný lovec', 100, '[{"material": "ENCHANTED_GOLDEN_APPLE", "amount": 1}, {"material": "ARROW", "amount": 64}, {"material": "DIAMOND", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -813,7 +831,7 @@ select e.id, 'c4_creeper', 'kampan'::quest_kind, 'Pozor, creeper!', 'Zabi 5 cree
   'chapter_4', 4, 'Lovec', 'Nauč sa brániť v noci.',
   'Nočný lovec', 100, '[{"material": "ENCHANTED_GOLDEN_APPLE", "amount": 1}, {"material": "ARROW", "amount": 64}, {"material": "DIAMOND", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -845,7 +863,7 @@ select e.id, 'c4_bow', 'kampan'::quest_kind, 'Strelec', 'Vyrob luk.', 15, 1,
   'chapter_4', 4, 'Lovec', 'Nauč sa brániť v noci.',
   'Nočný lovec', 100, '[{"material": "ENCHANTED_GOLDEN_APPLE", "amount": 1}, {"material": "ARROW", "amount": 64}, {"material": "DIAMOND", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -877,7 +895,7 @@ select e.id, 'c4_shield', 'kampan'::quest_kind, 'Štít', 'Vyrob štít.', 15, 1
   'chapter_4', 4, 'Lovec', 'Nauč sa brániť v noci.',
   'Nočný lovec', 100, '[{"material": "ENCHANTED_GOLDEN_APPLE", "amount": 1}, {"material": "ARROW", "amount": 64}, {"material": "DIAMOND", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -909,7 +927,7 @@ select e.id, 'c5_wheat', 'kampan'::quest_kind, 'Obilie', 'Pozbieraj 32 pšenice.
   'chapter_5', 5, 'Farmár', 'Jedlo a zvieratá = dlhodobé prežitie.',
   'Hospodárstvo', 100, '[{"material": "EMERALD", "amount": 8}, {"material": "BONE_MEAL", "amount": 32}, {"material": "GOLDEN_CARROT", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -941,7 +959,7 @@ select e.id, 'c5_bread', 'kampan'::quest_kind, 'Pekár', 'Vyrob 16 chlebov.', 20
   'chapter_5', 5, 'Farmár', 'Jedlo a zvieratá = dlhodobé prežitie.',
   'Hospodárstvo', 100, '[{"material": "EMERALD", "amount": 8}, {"material": "BONE_MEAL", "amount": 32}, {"material": "GOLDEN_CARROT", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -973,7 +991,7 @@ select e.id, 'c5_animals', 'kampan'::quest_kind, 'Pastier', 'Zabi 10 zvierat na 
   'chapter_5', 5, 'Farmár', 'Jedlo a zvieratá = dlhodobé prežitie.',
   'Hospodárstvo', 100, '[{"material": "EMERALD", "amount": 8}, {"material": "BONE_MEAL", "amount": 32}, {"material": "GOLDEN_CARROT", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1005,7 +1023,7 @@ select e.id, 'c5_wool', 'kampan'::quest_kind, 'Vlna', 'Získaj 16 vlny (položen
   'chapter_5', 5, 'Farmár', 'Jedlo a zvieratá = dlhodobé prežitie.',
   'Hospodárstvo', 100, '[{"material": "EMERALD", "amount": 8}, {"material": "BONE_MEAL", "amount": 32}, {"material": "GOLDEN_CARROT", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1037,7 +1055,7 @@ select e.id, 'c5_carrot', 'kampan'::quest_kind, 'Zelenina', 'Pozbieraj 16 mrkiev
   'chapter_5', 5, 'Farmár', 'Jedlo a zvieratá = dlhodobé prežitie.',
   'Hospodárstvo', 100, '[{"material": "EMERALD", "amount": 8}, {"material": "BONE_MEAL", "amount": 32}, {"material": "GOLDEN_CARROT", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1069,7 +1087,7 @@ select e.id, 'c6_helmet', 'kampan'::quest_kind, 'Prilba', 'Vyrob železnú prilb
   'chapter_6', 6, 'Remeselník', 'Plná výbava zo železa a viac.',
   'Majster remesla', 125, '[{"material": "DIAMOND", "amount": 5}, {"material": "ANVIL", "amount": 1}, {"material": "EXPERIENCE_BOTTLE", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1101,7 +1119,7 @@ select e.id, 'c6_chest', 'kampan'::quest_kind, 'Hrudák', 'Vyrob železný hrud�
   'chapter_6', 6, 'Remeselník', 'Plná výbava zo železa a viac.',
   'Majster remesla', 125, '[{"material": "DIAMOND", "amount": 5}, {"material": "ANVIL", "amount": 1}, {"material": "EXPERIENCE_BOTTLE", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1133,7 +1151,7 @@ select e.id, 'c6_legs', 'kampan'::quest_kind, 'Nohavice', 'Vyrob železné nohav
   'chapter_6', 6, 'Remeselník', 'Plná výbava zo železa a viac.',
   'Majster remesla', 125, '[{"material": "DIAMOND", "amount": 5}, {"material": "ANVIL", "amount": 1}, {"material": "EXPERIENCE_BOTTLE", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1165,7 +1183,7 @@ select e.id, 'c6_boots', 'kampan'::quest_kind, 'Topánky', 'Vyrob železné top�
   'chapter_6', 6, 'Remeselník', 'Plná výbava zo železa a viac.',
   'Majster remesla', 125, '[{"material": "DIAMOND", "amount": 5}, {"material": "ANVIL", "amount": 1}, {"material": "EXPERIENCE_BOTTLE", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1197,7 +1215,7 @@ select e.id, 'c6_diamond_pick', 'kampan'::quest_kind, 'Diamantový nástroj', 'V
   'chapter_6', 6, 'Remeselník', 'Plná výbava zo železa a viac.',
   'Majster remesla', 125, '[{"material": "DIAMOND", "amount": 5}, {"material": "ANVIL", "amount": 1}, {"material": "EXPERIENCE_BOTTLE", "amount": 16}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1229,7 +1247,7 @@ select e.id, 'c7_enter', 'kampan'::quest_kind, 'Portál', 'Vstúp do Netheru.', 
   'chapter_7', 7, 'Nether', 'Vstup do pekelného rozmeru.',
   'Pekelník', 150, '[{"material": "NETHERITE_SCRAP", "amount": 2}, {"material": "BLAZE_ROD", "amount": 8}, {"material": "GOLD_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1261,7 +1279,7 @@ select e.id, 'c7_quartz', 'kampan'::quest_kind, 'Kremeň', 'Vyťaž 24 nether qu
   'chapter_7', 7, 'Nether', 'Vstup do pekelného rozmeru.',
   'Pekelník', 150, '[{"material": "NETHERITE_SCRAP", "amount": 2}, {"material": "BLAZE_ROD", "amount": 8}, {"material": "GOLD_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1293,7 +1311,7 @@ select e.id, 'c7_gold', 'kampan'::quest_kind, 'Nether gold', 'Vyťaž 16 nether 
   'chapter_7', 7, 'Nether', 'Vstup do pekelného rozmeru.',
   'Pekelník', 150, '[{"material": "NETHERITE_SCRAP", "amount": 2}, {"material": "BLAZE_ROD", "amount": 8}, {"material": "GOLD_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1325,7 +1343,7 @@ select e.id, 'c7_blaze', 'kampan'::quest_kind, 'Blaze', 'Zabi 8 blaze.', 40, 8,
   'chapter_7', 7, 'Nether', 'Vstup do pekelného rozmeru.',
   'Pekelník', 150, '[{"material": "NETHERITE_SCRAP", "amount": 2}, {"material": "BLAZE_ROD", "amount": 8}, {"material": "GOLD_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1357,7 +1375,7 @@ select e.id, 'c7_debris', 'kampan'::quest_kind, 'Ancient Debris', 'Vyťaž 1 anc
   'chapter_7', 7, 'Nether', 'Vstup do pekelného rozmeru.',
   'Pekelník', 150, '[{"material": "NETHERITE_SCRAP", "amount": 2}, {"material": "BLAZE_ROD", "amount": 8}, {"material": "GOLD_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 2}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1389,7 +1407,7 @@ select e.id, 'c8_eyes', 'kampan'::quest_kind, 'Oči Endera', 'Vyrob 12 očí End
   'chapter_8', 8, 'Legenda triedy', 'Finálna skúška prežitia – End a sláva.',
   'Legenda servera', 300, '[{"material": "NETHERITE_INGOT", "amount": 4}, {"material": "BEACON", "amount": 1}, {"material": "DIAMOND_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1421,7 +1439,7 @@ select e.id, 'c8_end', 'kampan'::quest_kind, 'Koniec sveta', 'Vstúp do Endu.', 
   'chapter_8', 8, 'Legenda triedy', 'Finálna skúška prežitia – End a sláva.',
   'Legenda servera', 300, '[{"material": "NETHERITE_INGOT", "amount": 4}, {"material": "BEACON", "amount": 1}, {"material": "DIAMOND_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1453,7 +1471,7 @@ select e.id, 'c8_dragon', 'kampan'::quest_kind, 'Drak', 'Zabi Ender Dragona (spo
   'chapter_8', 8, 'Legenda triedy', 'Finálna skúška prežitia – End a sláva.',
   'Legenda servera', 300, '[{"material": "NETHERITE_INGOT", "amount": 4}, {"material": "BEACON", "amount": 1}, {"material": "DIAMOND_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1485,7 +1503,7 @@ select e.id, 'c8_elytra', 'kampan'::quest_kind, 'Elytra', 'Získaj elytru.', 80,
   'chapter_8', 8, 'Legenda triedy', 'Finálna skúška prežitia – End a sláva.',
   'Legenda servera', 300, '[{"material": "NETHERITE_INGOT", "amount": 4}, {"material": "BEACON", "amount": 1}, {"material": "DIAMOND_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1517,7 +1535,7 @@ select e.id, 'c8_shulker', 'kampan'::quest_kind, 'Shulker shell', 'Získaj 4 shu
   'chapter_8', 8, 'Legenda triedy', 'Finálna skúška prežitia – End a sláva.',
   'Legenda servera', 300, '[{"material": "NETHERITE_INGOT", "amount": 4}, {"material": "BEACON", "amount": 1}, {"material": "DIAMOND_BLOCK", "amount": 4}, {"material": "ENCHANTED_GOLDEN_APPLE", "amount": 4}]'::jsonb
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1549,7 +1567,7 @@ select e.id, 'd_wood', 'denne'::quest_kind, 'Ráno v lese', 'Získaj 24 klád.',
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1581,7 +1599,7 @@ select e.id, 'd_stone', 'denne'::quest_kind, 'Kamenár', 'Vyťaž 48 kameňa.', 
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1613,7 +1631,7 @@ select e.id, 'd_cook', 'denne'::quest_kind, 'Kuchár dňa', 'Upeč 12 jedál.', 
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1645,7 +1663,7 @@ select e.id, 'd_build', 'denne'::quest_kind, 'Stavba dňa', 'Polož 48 blokov.',
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1677,7 +1695,7 @@ select e.id, 'd_coal', 'denne'::quest_kind, 'Uhlíková smena', 'Vyťaž 20 uhli
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1709,7 +1727,7 @@ select e.id, 'd_iron', 'denne'::quest_kind, 'Železná smena', 'Vyťaž 12 žele
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1741,7 +1759,7 @@ select e.id, 'd_zombie', 'denne'::quest_kind, 'Nočná hliadka', 'Zabi 10 zombie
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1773,7 +1791,7 @@ select e.id, 'd_skeleton', 'denne'::quest_kind, 'Lukostrelec', 'Zabi 8 kostlivco
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1805,7 +1823,7 @@ select e.id, 'd_wheat', 'denne'::quest_kind, 'Žatva', 'Pozbieraj 24 pšenice.',
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1837,7 +1855,7 @@ select e.id, 'd_diamond', 'denne'::quest_kind, 'Diamantový deň', 'Vyťaž 2 di
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1869,7 +1887,7 @@ select e.id, 'd_nether_walk', 'denne'::quest_kind, 'Pekelná prechádzka', 'Vst�
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1901,7 +1919,7 @@ select e.id, 'd_blaze', 'denne'::quest_kind, 'Blaze hunt', 'Zabi 4 blaze.', 18, 
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1933,7 +1951,7 @@ select e.id, 'w_wood', 'tyzdenne'::quest_kind, 'Týždeň drevorubača', 'Získa
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1965,7 +1983,7 @@ select e.id, 'w_stone', 'tyzdenne'::quest_kind, 'Kameňolom týždňa', 'Vyťaž
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -1997,7 +2015,7 @@ select e.id, 'w_build', 'tyzdenne'::quest_kind, 'Staviteľský týždeň', 'Polo
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2029,7 +2047,7 @@ select e.id, 'w_iron', 'tyzdenne'::quest_kind, 'Železný týždeň', 'Vyťaž 6
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2061,7 +2079,7 @@ select e.id, 'w_mobs', 'tyzdenne'::quest_kind, 'Hliadka týždňa', 'Zabi 60 nep
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2093,7 +2111,7 @@ select e.id, 'w_farm', 'tyzdenne'::quest_kind, 'Žatva týždňa', 'Pozbieraj 80
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2125,7 +2143,7 @@ select e.id, 'w_diamond', 'tyzdenne'::quest_kind, 'Diamantový týždeň', 'Vyť
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2157,7 +2175,7 @@ select e.id, 'w_nether', 'tyzdenne'::quest_kind, 'Netherovský týždeň', 'Zabi
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2189,7 +2207,7 @@ select e.id, 'l_explorer', 'dlhodobe'::quest_kind, 'Prieskumník sezóny', 'Polo
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2221,7 +2239,7 @@ select e.id, 'l_miner', 'dlhodobe'::quest_kind, 'Baník sezóny', 'Vyťaž 400 �
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2253,7 +2271,7 @@ select e.id, 'l_hunter', 'dlhodobe'::quest_kind, 'Lovec sezóny', 'Zabi 250 nepr
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2285,7 +2303,7 @@ select e.id, 'l_farmer', 'dlhodobe'::quest_kind, 'Farmár sezóny', 'Pozbieraj 4
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2317,7 +2335,7 @@ select e.id, 'l_diamond', 'dlhodobe'::quest_kind, 'Diamantová sezóna', 'Vyťa�
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2349,7 +2367,7 @@ select e.id, 'l_nether', 'dlhodobe'::quest_kind, 'Pekelná sezóna', 'Zabi 80 bl
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2381,7 +2399,7 @@ select e.id, 's_bridge', 'spolocne'::quest_kind, 'Postavte spoločne most', 'Spo
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2413,7 +2431,7 @@ select e.id, 's_iron', 'spolocne'::quest_kind, 'Spoločne vyťažte železo', 'S
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2445,7 +2463,7 @@ select e.id, 's_wood', 'spolocne'::quest_kind, 'Spoločný sklad dreva', 'Spolo�
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2477,7 +2495,7 @@ select e.id, 's_mobs', 'spolocne'::quest_kind, 'Spoločná nočná hliadka', 'Sp
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2509,7 +2527,7 @@ select e.id, 's_nether', 'spolocne'::quest_kind, 'Spoločná výprava do Netheru
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2541,7 +2559,7 @@ select e.id, 's_dragon', 'spolocne'::quest_kind, 'Triedny drak', 'Spoločne zabi
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2573,7 +2591,7 @@ select e.id, 'p_wood', 'party'::quest_kind, 'Triedny les', 'Spoločne získajte 
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2605,7 +2623,7 @@ select e.id, 'p_mine', 'party'::quest_kind, 'Banícka partia', 'Spoločne vyťa�
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2637,7 +2655,7 @@ select e.id, 'p_mobs', 'party'::quest_kind, 'Nočná hliadka triedy', 'Spoločne
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2669,7 +2687,7 @@ select e.id, 'p_build', 'party'::quest_kind, 'Spoločná stavba', 'Spoločne pol
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2701,7 +2719,7 @@ select e.id, 'p_nether', 'party'::quest_kind, 'Výprava do Netheru', 'Spoločne 
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,
@@ -2733,7 +2751,7 @@ select e.id, 'p_dragon', 'party'::quest_kind, 'Triedny drak', 'Spoločne zabiť 
   null, null, null, null,
   null, null, null
 from expeditions e
-where e.slug = 'cesta-prezivsich'
+where e.id = '22222222-2222-2222-2222-222222222201'
 on conflict (expedition_id, stable_key) do update set
   kind = excluded.kind,
   title = excluded.title,

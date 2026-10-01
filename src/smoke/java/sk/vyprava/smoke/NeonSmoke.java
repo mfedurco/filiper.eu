@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class NeonSmoke {
     private static final UUID TEST_UUID = UUID.fromString("00000000-0000-0000-0000-0000000000db");
     private static final String TEST_NAME = "db-test";
+    private static final String SEEDED_SERVER = "test";
 
     public static void main(String[] args) {
         boolean ok = true;
@@ -39,16 +40,16 @@ public final class NeonSmoke {
             Class.forName("org.postgresql.Driver");
             try (DatabaseClient client = DatabaseClient.open(url)) {
                 client.ping();
-                String sql = Files.readString(Path.of("web/neon/002_expeditions.sql"));
-                client.applyScript(sql);
+                client.applyScript(Files.readString(Path.of("web/neon/002_expeditions.sql")));
+                client.applyScript(Files.readString(Path.of("web/neon/003_server_scope.sql")));
                 client.ping();
             }
             boolean wrote = playerRoundTrip(url) && progressPush(url);
             System.out.println(wrote ? "NEON_WRITE=pass" : "NEON_WRITE=fail");
             ok &= wrote;
             try (DatabaseClient client = DatabaseClient.open(url)) {
-                var active = client.loadActive();
-                int quests = client.countActiveQuests();
+                var active = client.loadActive(SEEDED_SERVER);
+                int quests = client.countActiveQuests(SEEDED_SERVER);
                 if (active.isEmpty()) {
                     System.out.println("ACTIVE_SLUG=");
                     System.out.println("QUEST_COUNT=0");
@@ -62,6 +63,7 @@ public final class NeonSmoke {
                 }
             }
             ok &= windowSwitch(url);
+            ok &= independentCopy(url);
         } catch (Exception e) {
             System.out.println("NEON_WRITE=fail");
             printSafe(e);
@@ -134,19 +136,21 @@ public final class NeonSmoke {
         try (Connection connection = DatabaseClient.connect(url)) {
             deleteTestPlayer(connection);
             try (PreparedStatement insert = connection.prepareStatement("""
-                    insert into players (mc_uuid, name, chapter, total_points, weekly_points)
-                    values (?, ?, 1, 0, 0)
-                    on conflict (mc_uuid) do update set name = excluded.name
+                    insert into players (mc_uuid, name, chapter, total_points, weekly_points, server_id)
+                    values (?, ?, 1, 0, 0, ?)
+                    on conflict (server_id, mc_uuid) do update set name = excluded.name
                     """)) {
                 insert.setString(1, TEST_UUID.toString());
                 insert.setString(2, TEST_NAME);
+                insert.setString(3, SEEDED_SERVER);
                 insert.executeUpdate();
             }
             String name;
             String uuid;
             try (PreparedStatement read = connection.prepareStatement(
-                    "select name, mc_uuid from players where mc_uuid = ?")) {
+                    "select name, mc_uuid from players where mc_uuid = ? and server_id = ?")) {
                 read.setString(1, TEST_UUID.toString());
+                read.setString(2, SEEDED_SERVER);
                 try (ResultSet rs = read.executeQuery()) {
                     if (!rs.next()) {
                         System.out.println("NEON_WRITE=fail");
@@ -159,8 +163,9 @@ public final class NeonSmoke {
             }
             deleteTestPlayer(connection);
             try (PreparedStatement read = connection.prepareStatement(
-                    "select 1 from players where mc_uuid = ?")) {
+                    "select 1 from players where mc_uuid = ? and server_id = ?")) {
                 read.setString(1, TEST_UUID.toString());
+                read.setString(2, SEEDED_SERVER);
                 try (ResultSet rs = read.executeQuery()) {
                     if (rs.next()) {
                         System.out.println("NEON_WRITE=fail");
@@ -189,7 +194,7 @@ public final class NeonSmoke {
 
     private static boolean progressPush(String url) {
         try (DatabaseClient client = DatabaseClient.open(url)) {
-            var active = client.loadActive();
+            var active = client.loadActive(SEEDED_SERVER);
             if (active.isEmpty()) {
                 System.out.println("NEON_WRITE=fail");
                 System.out.println("error=no active expedition for progress push");
@@ -199,16 +204,19 @@ public final class NeonSmoke {
                     java.util.List.of(new OutboxBatch.PlayerPush(active.get().id().toString(), sample(TEST_UUID))),
                     java.util.List.of(),
                     java.util.List.of()
-            ), java.util.Map.of());
+            ), java.util.Map.of(), SEEDED_SERVER);
             try (Connection connection = DatabaseClient.connect(url)) {
                 try (PreparedStatement read = connection.prepareStatement("""
                         select pp.current_amount
                         from player_progress pp
                         join players p on p.id = pp.player_id
-                        where p.mc_uuid = ? and p.name = ? and pp.goal_id = 'c1_wood'
+                        where p.mc_uuid = ? and p.name = ? and p.server_id = ?
+                          and pp.goal_id = 'c1_wood' and pp.server_id = ?
                         """)) {
                     read.setString(1, TEST_UUID.toString());
                     read.setString(2, TEST_NAME);
+                    read.setString(3, SEEDED_SERVER);
+                    read.setString(4, SEEDED_SERVER);
                     try (ResultSet rs = read.executeQuery()) {
                         if (!rs.next() || rs.getInt(1) != 1) {
                             System.out.println("NEON_WRITE=fail");
@@ -235,36 +243,42 @@ public final class NeonSmoke {
 
     private static boolean windowSwitch(String url) {
         try (Connection connection = DatabaseClient.connect(url)) {
-            try (Statement statement = connection.createStatement()) {
-                statement.executeUpdate("delete from expeditions where slug = 'window-smoke'");
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "delete from expeditions where slug = 'window-smoke' and server_id = ?")) {
+                statement.setString(1, SEEDED_SERVER);
+                statement.executeUpdate();
             }
             String before;
-            try (Statement statement = connection.createStatement();
-                 ResultSet rs = statement.executeQuery(
-                         "select slug from expeditions where status = 'active' limit 1")) {
-                if (!rs.next()) {
-                    System.out.println("WINDOW_SWITCH=fail");
-                    System.out.println("error=no active expedition before the schedule test");
-                    return false;
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "select slug from expeditions where status = 'active' and server_id = ? limit 1")) {
+                statement.setString(1, SEEDED_SERVER);
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (!rs.next()) {
+                        System.out.println("WINDOW_SWITCH=fail");
+                        System.out.println("error=no active expedition before the schedule test");
+                        return false;
+                    }
+                    before = rs.getString(1);
                 }
-                before = rs.getString(1);
             }
             connection.setAutoCommit(false);
             try {
                 try (PreparedStatement insert = connection.prepareStatement("""
-                        insert into expeditions (slug, title, description, status, starts_at, ends_at)
-                        values ('window-smoke', 'Window smoke', 'rollback only', 'draft', ?, ?)
+                        insert into expeditions (slug, title, description, status, starts_at, ends_at, server_id)
+                        values ('window-smoke', 'Window smoke', 'rollback only', 'draft', ?, ?, ?)
                         """)) {
                     insert.setObject(1, OffsetDateTime.parse("2027-07-01T00:00:00+02:00"));
                     insert.setObject(2, OffsetDateTime.parse("2027-08-01T00:00:00+02:00"));
+                    insert.setString(3, SEEDED_SERVER);
                     insert.executeUpdate();
                 }
                 String active;
                 String ended;
                 boolean changed;
                 try (PreparedStatement schedule = connection.prepareStatement(
-                        "select changed, active_slug, ended_slug from apply_expedition_schedule(?)")) {
+                        "select changed, active_slug, ended_slug from apply_expedition_schedule(?, ?)")) {
                     schedule.setObject(1, OffsetDateTime.parse("2027-07-15T12:00:00+02:00"));
+                    schedule.setString(2, SEEDED_SERVER);
                     try (ResultSet rs = schedule.executeQuery()) {
                         if (!rs.next()) {
                             System.out.println("WINDOW_SWITCH=fail");
@@ -285,22 +299,26 @@ public final class NeonSmoke {
                 connection.rollback();
                 connection.setAutoCommit(true);
             }
-            try (Statement statement = connection.createStatement();
-                 ResultSet rs = statement.executeQuery(
-                         "select slug from expeditions where status = 'active' limit 1")) {
-                if (!rs.next() || !before.equals(rs.getString(1))) {
-                    System.out.println("WINDOW_SWITCH=fail");
-                    System.out.println("error=rollback did not restore the active expedition");
-                    return false;
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "select slug from expeditions where status = 'active' and server_id = ? limit 1")) {
+                statement.setString(1, SEEDED_SERVER);
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (!rs.next() || !before.equals(rs.getString(1))) {
+                        System.out.println("WINDOW_SWITCH=fail");
+                        System.out.println("error=rollback did not restore the active expedition");
+                        return false;
+                    }
                 }
             }
-            try (Statement statement = connection.createStatement();
-                 ResultSet rs = statement.executeQuery(
-                         "select count(*) from expeditions where slug = 'window-smoke'")) {
-                if (!rs.next() || rs.getInt(1) != 0) {
-                    System.out.println("WINDOW_SWITCH=fail");
-                    System.out.println("error=schedule test row was committed");
-                    return false;
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "select count(*) from expeditions where slug = 'window-smoke' and server_id = ?")) {
+                statement.setString(1, SEEDED_SERVER);
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (!rs.next() || rs.getInt(1) != 0) {
+                        System.out.println("WINDOW_SWITCH=fail");
+                        System.out.println("error=schedule test row was committed");
+                        return false;
+                    }
                 }
             }
             System.out.println("WINDOW_SWITCH=pass");
@@ -312,11 +330,83 @@ public final class NeonSmoke {
         }
     }
 
+    private static boolean independentCopy(String url) {
+        try (Connection connection = DatabaseClient.connect(url)) {
+            connection.setAutoCommit(false);
+            try {
+                try (PreparedStatement insert = connection.prepareStatement("""
+                        insert into servers (id, label, first_seen_at)
+                        values ('smoke-copy', 'smoke-copy', now())
+                        on conflict (id) do nothing
+                        """)) {
+                    insert.executeUpdate();
+                }
+                try (PreparedStatement insert = connection.prepareStatement("""
+                        insert into players (mc_uuid, name, server_id)
+                        values (?, 'copy-a', ?), (?, 'copy-b', 'smoke-copy')
+                        """)) {
+                    insert.setString(1, TEST_UUID.toString());
+                    insert.setString(2, SEEDED_SERVER);
+                    insert.setString(3, TEST_UUID.toString());
+                    insert.executeUpdate();
+                }
+                try (PreparedStatement insert = connection.prepareStatement("""
+                        insert into expeditions (slug, title, description, status, starts_at, ends_at, server_id)
+                        values ('cesta-prezivsich', 'Copy', 'rollback only', 'active', ?, ?, 'smoke-copy')
+                        """)) {
+                    insert.setObject(1, OffsetDateTime.parse("2026-09-01T00:00:00+02:00"));
+                    insert.setObject(2, OffsetDateTime.parse("2027-06-30T23:59:59+02:00"));
+                    insert.executeUpdate();
+                }
+                int activeServers;
+                try (Statement statement = connection.createStatement();
+                     ResultSet rs = statement.executeQuery(
+                             "select count(distinct server_id) from expeditions where status = 'active'")) {
+                    activeServers = rs.next() ? rs.getInt(1) : 0;
+                }
+                String seeded;
+                try (PreparedStatement read = connection.prepareStatement("""
+                        select server_id from expeditions
+                        where id = '22222222-2222-2222-2222-222222222201' and status = 'active'
+                        """)) {
+                    try (ResultSet rs = read.executeQuery()) {
+                        seeded = rs.next() ? rs.getString(1) : "";
+                    }
+                }
+                if (activeServers < 2 || !SEEDED_SERVER.equals(seeded)) {
+                    System.out.println("SERVER_COPY=fail");
+                    System.out.println("error=a second server could not keep its own active expedition");
+                    return false;
+                }
+            } finally {
+                connection.rollback();
+                connection.setAutoCommit(true);
+            }
+            try (PreparedStatement read = connection.prepareStatement(
+                    "select count(*) from servers where id = 'smoke-copy'")) {
+                try (ResultSet rs = read.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) != 0) {
+                        System.out.println("SERVER_COPY=fail");
+                        System.out.println("error=copy server row was committed");
+                        return false;
+                    }
+                }
+            }
+            System.out.println("SERVER_COPY=pass");
+            return true;
+        } catch (Exception e) {
+            System.out.println("SERVER_COPY=fail");
+            printSafe(e);
+            return false;
+        }
+    }
+
     private static void deleteTestPlayer(Connection connection) throws SQLException {
         try (PreparedStatement delete = connection.prepareStatement(
-                "delete from players where mc_uuid = ? and name = ?")) {
+                "delete from players where mc_uuid = ? and name = ? and server_id = ?")) {
             delete.setString(1, TEST_UUID.toString());
             delete.setString(2, TEST_NAME);
+            delete.setString(3, SEEDED_SERVER);
             delete.executeUpdate();
         }
     }

@@ -182,6 +182,8 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         }
         outbox.markParty(expeditionId, new PartySnapshot(
                 party.id(),
+                party.name(),
+                party.leader(),
                 party.activeQuestId(),
                 party.questProgress(),
                 party.questCompleted(),
@@ -209,6 +211,15 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
                 return;
             }
             loggedDisabled = false;
+            if (settings.serverId() == null) {
+                finish(() -> {
+                    registry.clear();
+                    goalCatalog = Map.of();
+                    activeExpeditionId = null;
+                    warnDb("server-id je prázdne. Zápis do databázy je odmietnutý a výprava tohto servera sa nenačíta.");
+                }, after);
+                return;
+            }
             if (settings.jdbcUrl() == null) {
                 finish(() -> warnDb("database.enabled je zapnuté, ale chýba priama JDBC URL (database.jdbc-url, DATABASE_URL_UNPOOLED alebo .env.local)."), after);
                 return;
@@ -219,8 +230,10 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
                 return;
             }
             try {
-                var active = db.syncSchedule(Instant.now());
-                List<QuestRecord> records = active.isPresent() ? db.loadQuests(active.get().id()) : List.of();
+                var active = db.syncSchedule(Instant.now(), settings.serverId());
+                List<QuestRecord> records = active.isPresent()
+                        ? db.loadQuests(active.get().id(), settings.serverId())
+                        : List.of();
                 finish(() -> applyLoaded(active.orElse(null), records), after);
             } catch (Exception e) {
                 warnDb("Načítanie výpravy zlyhalo: " + LogSafe.message(e));
@@ -310,6 +323,12 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         }
         for (PartySnapshot snapshot : outbox.pendingParties(expeditionId)) {
             store.party(snapshot.partyId()).ifPresent(party -> {
+                if (!snapshot.name().isBlank()) {
+                    party.setName(snapshot.name());
+                }
+                if (snapshot.leader() != null) {
+                    party.setLeader(snapshot.leader());
+                }
                 party.setActiveQuestId(snapshot.questKey());
                 party.setQuestProgress(snapshot.progress());
                 party.setQuestCompleted(snapshot.completed());
@@ -348,12 +367,17 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         if (!settings.enabled() || settings.jdbcUrl() == null) {
             return;
         }
+        if (settings.serverId() == null) {
+            warnDb("server-id je prázdne. Zápis do databázy je odmietnutý.");
+            return;
+        }
         DatabaseClient db = openDatabase(settings.jdbcUrl());
         if (db == null) {
             return;
         }
+        String serverId = settings.serverId();
         try {
-            new OutboxFlusher().flush(outbox, batch -> db.push(batch, goalCatalog));
+            new OutboxFlusher().flush(outbox, batch -> db.push(batch, goalCatalog, serverId));
             outbox.save(outboxPath());
             loggedDown = false;
         } catch (Exception e) {

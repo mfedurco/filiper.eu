@@ -6,6 +6,8 @@ import java.util.UUID;
 
 public record PartySnapshot(
         String partyId,
+        String name,
+        UUID leader,
         String questKey,
         int progress,
         boolean completed,
@@ -15,15 +17,18 @@ public record PartySnapshot(
 ) {
     public PartySnapshot {
         contributions = Map.copyOf(contributions);
+        name = name == null ? "" : name;
         questKey = questKey == null ? "" : questKey;
     }
 
     public PartySnapshot withGeneration(int generation, boolean pending) {
-        return new PartySnapshot(partyId, questKey, progress, completed, generation, pending, contributions);
+        return new PartySnapshot(partyId, name, leader, questKey, progress, completed, generation, pending, contributions);
     }
 
     public Map<String, Object> toMap() {
         Map<String, Object> map = new LinkedHashMap<>();
+        map.put("name", name);
+        map.put("leader", leader == null ? "" : leader.toString());
         map.put("questKey", questKey);
         map.put("progress", progress);
         map.put("completed", completed);
@@ -46,8 +51,12 @@ public record PartySnapshot(
                 contributions.put(UUID.fromString(String.valueOf(entry.getKey())), amount);
             }
         }
+        String leaderRaw = map.get("leader") == null ? "" : String.valueOf(map.get("leader"));
+        UUID leader = leaderRaw.isBlank() ? null : UUID.fromString(leaderRaw);
         return new PartySnapshot(
                 partyId,
+                map.get("name") == null ? "" : String.valueOf(map.get("name")),
+                leader,
                 map.get("questKey") == null ? "" : String.valueOf(map.get("questKey")),
                 map.get("progress") instanceof Number progress ? progress.intValue() : 0,
                 map.get("completed") instanceof Boolean completed && completed,

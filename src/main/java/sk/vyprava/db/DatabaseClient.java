@@ -133,50 +133,71 @@ public final class DatabaseClient implements AutoCloseable {
         }
     }
 
-    public Optional<ExpeditionRecord> syncSchedule(Instant now) throws SQLException {
-        try (Connection connection = pool.getConnection();
-             PreparedStatement statement = connection.prepareStatement(
-                     "select changed, active_id, active_slug, ended_slug from apply_expedition_schedule(?)")) {
-            statement.setObject(1, OffsetDateTime.ofInstant(now, ZoneOffset.UTC));
-            try (ResultSet rs = statement.executeQuery()) {
-                if (rs.next()) {
-                    // The row reports what changed. The active expedition is loaded next.
+    public Optional<ExpeditionRecord> syncSchedule(Instant now, String serverId) throws SQLException {
+        requireServer(serverId);
+        try (Connection connection = pool.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                ensureServer(connection, serverId);
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "select changed, active_id, active_slug, ended_slug from apply_expedition_schedule(?, ?)")) {
+                    statement.setObject(1, OffsetDateTime.ofInstant(now, ZoneOffset.UTC));
+                    statement.setString(2, serverId);
+                    try (ResultSet rs = statement.executeQuery()) {
+                        if (rs.next()) {
+                            // The row reports what changed. The active expedition is loaded next.
+                        }
+                    }
                 }
+                connection.commit();
+            } catch (SQLException | RuntimeException error) {
+                connection.rollback();
+                throw error;
+            } finally {
+                connection.setAutoCommit(true);
             }
         }
-        return loadActive();
+        return loadActive(serverId);
     }
 
-    public Optional<ExpeditionRecord> loadActive() throws SQLException {
+    public Optional<ExpeditionRecord> loadActive(String serverId) throws SQLException {
+        requireServer(serverId);
         try (Connection connection = pool.getConnection();
              PreparedStatement statement = connection.prepareStatement("""
                      select id, slug, title, description, status::text as status, starts_at, ends_at
                      from expeditions
-                     where status = 'active'
+                     where status = 'active' and server_id = ?
                      limit 1
-                     """);
-             ResultSet rs = statement.executeQuery()) {
-            if (!rs.next()) {
-                return Optional.empty();
+                     """)) {
+            statement.setString(1, serverId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (!rs.next()) {
+                    return Optional.empty();
+                }
+                return Optional.of(readExpedition(rs));
             }
-            return Optional.of(readExpedition(rs));
         }
     }
 
-    public int countActiveQuests() throws SQLException {
+    public int countActiveQuests(String serverId) throws SQLException {
+        requireServer(serverId);
         try (Connection connection = pool.getConnection();
              PreparedStatement statement = connection.prepareStatement("""
                      select count(q.id)::int
                      from expeditions e
-                     join quest_definitions q on q.expedition_id = e.id and q.active
-                     where e.status = 'active'
-                     """);
-             ResultSet rs = statement.executeQuery()) {
-            return rs.next() ? rs.getInt(1) : 0;
+                     join quest_definitions q
+                       on q.expedition_id = e.id and q.server_id = e.server_id and q.active
+                     where e.status = 'active' and e.server_id = ?
+                     """)) {
+            statement.setString(1, serverId);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         }
     }
 
-    public List<QuestRecord> loadQuests(UUID expeditionId) throws SQLException {
+    public List<QuestRecord> loadQuests(UUID expeditionId, String serverId) throws SQLException {
+        requireServer(serverId);
         try (Connection connection = pool.getConnection();
              PreparedStatement statement = connection.prepareStatement("""
                      select stable_key, kind::text, title, description, points, target_count,
@@ -184,10 +205,11 @@ public final class DatabaseClient implements AutoCloseable {
                             rewards::text, chapter_key, chapter_order, chapter_title, chapter_description,
                             milestone_name, milestone_points, milestone_rewards::text
                      from quest_definitions
-                     where expedition_id = ? and active
+                     where expedition_id = ? and server_id = ? and active
                      order by sort_order, stable_key
                      """)) {
             statement.setObject(1, expeditionId);
+            statement.setString(2, serverId);
             try (ResultSet rs = statement.executeQuery()) {
                 List<QuestRecord> quests = new ArrayList<>();
                 while (rs.next()) {
@@ -218,18 +240,20 @@ public final class DatabaseClient implements AutoCloseable {
         }
     }
 
-    public void push(OutboxBatch batch, Map<String, GoalMeta> catalog) throws SQLException {
+    public void push(OutboxBatch batch, Map<String, GoalMeta> catalog, String serverId) throws SQLException {
+        requireServer(serverId);
         try (Connection connection = pool.getConnection()) {
             connection.setAutoCommit(false);
             try {
+                ensureServer(connection, serverId);
                 for (OutboxBatch.PlayerPush push : batch.players()) {
-                    pushPlayer(connection, UUID.fromString(push.expeditionId()), push.snapshot(), catalog);
+                    pushPlayer(connection, serverId, UUID.fromString(push.expeditionId()), push.snapshot(), catalog);
                 }
                 for (OutboxBatch.SharedPush push : batch.shared()) {
-                    pushShared(connection, UUID.fromString(push.expeditionId()), push.snapshot(), catalog);
+                    pushShared(connection, serverId, UUID.fromString(push.expeditionId()), push.snapshot(), catalog);
                 }
                 for (OutboxBatch.PartyPush push : batch.parties()) {
-                    pushParty(connection, UUID.fromString(push.expeditionId()), push.snapshot(), catalog);
+                    pushParty(connection, serverId, UUID.fromString(push.expeditionId()), push.snapshot(), catalog);
                 }
                 connection.commit();
             } catch (SQLException | RuntimeException error) {
@@ -250,41 +274,45 @@ public final class DatabaseClient implements AutoCloseable {
         }
     }
 
-    private void pushPlayer(Connection connection, UUID expeditionId, PlayerSnapshot snapshot, Map<String, GoalMeta> catalog)
+    private void pushPlayer(Connection connection, String serverId, UUID expeditionId, PlayerSnapshot snapshot, Map<String, GoalMeta> catalog)
             throws SQLException {
-        UUID playerId = upsertPlayer(connection, snapshot);
-        upsertLeaderboard(connection, expeditionId, playerId, snapshot);
+        UUID playerId = upsertPlayer(connection, serverId, snapshot);
+        upsertLeaderboard(connection, serverId, expeditionId, playerId, snapshot);
         try (PreparedStatement delete = connection.prepareStatement("""
                 delete from player_progress
-                where player_id = ? and expedition_id = ?
+                where player_id = ? and expedition_id = ? and server_id = ?
                 """)) {
             delete.setObject(1, playerId);
             delete.setObject(2, expeditionId);
+            delete.setString(3, serverId);
             delete.executeUpdate();
         }
         for (Map.Entry<String, QuestRow> entry : snapshot.quests().entrySet()) {
             ensureGoal(connection, entry.getKey(), entry.getValue().goalKind(), catalog.get(entry.getKey()));
             try (PreparedStatement insert = connection.prepareStatement("""
-                    insert into player_progress (player_id, goal_id, expedition_id, current_amount, completed, updated_at)
-                    values (?, ?, ?, ?, ?, now())
+                    insert into player_progress (
+                      player_id, goal_id, expedition_id, server_id, current_amount, completed, updated_at
+                    ) values (?, ?, ?, ?, ?, ?, now())
                     """)) {
                 insert.setObject(1, playerId);
                 insert.setString(2, entry.getKey());
                 insert.setObject(3, expeditionId);
-                insert.setInt(4, entry.getValue().current());
-                insert.setBoolean(5, entry.getValue().completed());
+                insert.setString(4, serverId);
+                insert.setInt(5, entry.getValue().current());
+                insert.setBoolean(6, entry.getValue().completed());
                 insert.executeUpdate();
             }
         }
     }
 
-    private void pushShared(Connection connection, UUID expeditionId, SharedSnapshot snapshot, Map<String, GoalMeta> catalog)
+    private void pushShared(Connection connection, String serverId, UUID expeditionId, SharedSnapshot snapshot, Map<String, GoalMeta> catalog)
             throws SQLException {
         ensureGoal(connection, snapshot.questKey(), "shared", catalog.get(snapshot.questKey()));
         try (PreparedStatement upsert = connection.prepareStatement("""
-                insert into shared_goal_state (goal_id, expedition_id, progress, completed, period_key, updated_at)
-                values (?, ?, ?, ?, ?, now())
-                on conflict (expedition_id, goal_id) where expedition_id is not null
+                insert into shared_goal_state (
+                  goal_id, expedition_id, server_id, progress, completed, period_key, updated_at
+                ) values (?, ?, ?, ?, ?, ?, now())
+                on conflict (server_id, expedition_id, goal_id) where expedition_id is not null
                 do update set
                   progress = excluded.progress,
                   completed = excluded.completed,
@@ -293,77 +321,113 @@ public final class DatabaseClient implements AutoCloseable {
                 """)) {
             upsert.setString(1, snapshot.questKey());
             upsert.setObject(2, expeditionId);
-            upsert.setInt(3, snapshot.progress());
-            upsert.setBoolean(4, snapshot.completed());
+            upsert.setString(3, serverId);
+            upsert.setInt(4, snapshot.progress());
+            upsert.setBoolean(5, snapshot.completed());
             if (snapshot.periodKey().isBlank()) {
-                upsert.setNull(5, Types.VARCHAR);
+                upsert.setNull(6, Types.VARCHAR);
             } else {
-                upsert.setString(5, snapshot.periodKey());
+                upsert.setString(6, snapshot.periodKey());
             }
             upsert.executeUpdate();
         }
-        replaceContributions(connection, expeditionId, snapshot.questKey(), snapshot.contributions());
+        replaceContributions(connection, serverId, expeditionId, snapshot.questKey(), snapshot.contributions());
     }
 
-    private void pushParty(Connection connection, UUID expeditionId, PartySnapshot snapshot, Map<String, GoalMeta> catalog)
+    private void pushParty(Connection connection, String serverId, UUID expeditionId, PartySnapshot snapshot, Map<String, GoalMeta> catalog)
             throws SQLException {
+        try (PreparedStatement upsert = connection.prepareStatement("""
+                insert into parties (
+                  server_id, expedition_id, party_key, name, leader_mc_uuid,
+                  quest_key, quest_progress, quest_completed, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, now())
+                on conflict (server_id, expedition_id, party_key) where expedition_id is not null
+                do update set
+                  name = excluded.name,
+                  leader_mc_uuid = excluded.leader_mc_uuid,
+                  quest_key = excluded.quest_key,
+                  quest_progress = excluded.quest_progress,
+                  quest_completed = excluded.quest_completed,
+                  updated_at = now()
+                """)) {
+            upsert.setString(1, serverId);
+            upsert.setObject(2, expeditionId);
+            upsert.setString(3, snapshot.partyId());
+            upsert.setString(4, snapshot.name());
+            if (snapshot.leader() == null) {
+                upsert.setNull(5, Types.VARCHAR);
+            } else {
+                upsert.setString(5, snapshot.leader().toString());
+            }
+            if (snapshot.questKey().isBlank()) {
+                upsert.setNull(6, Types.VARCHAR);
+            } else {
+                upsert.setString(6, snapshot.questKey());
+            }
+            upsert.setInt(7, snapshot.progress());
+            upsert.setBoolean(8, snapshot.completed());
+            upsert.executeUpdate();
+        }
         if (snapshot.questKey().isBlank()) {
             return;
         }
         ensureGoal(connection, snapshot.questKey(), "party", catalog.get(snapshot.questKey()));
         for (Map.Entry<UUID, Integer> entry : snapshot.contributions().entrySet()) {
-            UUID playerId = findPlayerId(connection, entry.getKey());
+            UUID playerId = findPlayerId(connection, serverId, entry.getKey());
             if (playerId == null) {
                 continue;
             }
             try (PreparedStatement insert = connection.prepareStatement("""
-                    insert into contributions (goal_id, player_id, expedition_id, amount, updated_at)
-                    values (?, ?, ?, ?, now())
-                    on conflict (expedition_id, goal_id, player_id) where expedition_id is not null
+                    insert into contributions (goal_id, player_id, expedition_id, server_id, amount, updated_at)
+                    values (?, ?, ?, ?, ?, now())
+                    on conflict (server_id, expedition_id, goal_id, player_id) where expedition_id is not null
                     do update set amount = excluded.amount, updated_at = now()
                     """)) {
                 insert.setString(1, snapshot.questKey());
                 insert.setObject(2, playerId);
                 insert.setObject(3, expeditionId);
-                insert.setInt(4, entry.getValue());
+                insert.setString(4, serverId);
+                insert.setInt(5, entry.getValue());
                 insert.executeUpdate();
             }
         }
     }
 
-    private void replaceContributions(Connection connection, UUID expeditionId, String goalId, Map<UUID, Integer> contributions)
+    private void replaceContributions(Connection connection, String serverId, UUID expeditionId, String goalId, Map<UUID, Integer> contributions)
             throws SQLException {
         try (PreparedStatement delete = connection.prepareStatement("""
                 delete from contributions
-                where goal_id = ? and expedition_id = ?
+                where goal_id = ? and expedition_id = ? and server_id = ?
                 """)) {
             delete.setString(1, goalId);
             delete.setObject(2, expeditionId);
+            delete.setString(3, serverId);
             delete.executeUpdate();
         }
         for (Map.Entry<UUID, Integer> entry : contributions.entrySet()) {
-            UUID playerId = findPlayerId(connection, entry.getKey());
+            UUID playerId = findPlayerId(connection, serverId, entry.getKey());
             if (playerId == null) {
                 continue;
             }
             try (PreparedStatement insert = connection.prepareStatement("""
-                    insert into contributions (goal_id, player_id, expedition_id, amount, updated_at)
-                    values (?, ?, ?, ?, now())
+                    insert into contributions (goal_id, player_id, expedition_id, server_id, amount, updated_at)
+                    values (?, ?, ?, ?, ?, now())
                     """)) {
                 insert.setString(1, goalId);
                 insert.setObject(2, playerId);
                 insert.setObject(3, expeditionId);
-                insert.setInt(4, entry.getValue());
+                insert.setString(4, serverId);
+                insert.setInt(5, entry.getValue());
                 insert.executeUpdate();
             }
         }
     }
 
-    private UUID upsertPlayer(Connection connection, PlayerSnapshot snapshot) throws SQLException {
+    private UUID upsertPlayer(Connection connection, String serverId, PlayerSnapshot snapshot) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
-                insert into players (mc_uuid, name, chapter, total_points, weekly_points, party_id, updated_at)
-                values (?, ?, ?, ?, ?, ?, now())
-                on conflict (mc_uuid) do update set
+                insert into players (mc_uuid, name, chapter, total_points, weekly_points, party_id, server_id, updated_at)
+                values (?, ?, ?, ?, ?, ?, ?, now())
+                on conflict (server_id, mc_uuid) do update set
                   name = excluded.name,
                   chapter = excluded.chapter,
                   total_points = excluded.total_points,
@@ -382,6 +446,7 @@ public final class DatabaseClient implements AutoCloseable {
             } else {
                 statement.setString(6, snapshot.partyId());
             }
+            statement.setString(7, serverId);
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next()) {
                     throw new SQLException("Upsert hráča nevrátil id.");
@@ -391,13 +456,13 @@ public final class DatabaseClient implements AutoCloseable {
         }
     }
 
-    private void upsertLeaderboard(Connection connection, UUID expeditionId, UUID playerId, PlayerSnapshot snapshot)
+    private void upsertLeaderboard(Connection connection, String serverId, UUID expeditionId, UUID playerId, PlayerSnapshot snapshot)
             throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 insert into leaderboard_snapshot (
-                  player_id, expedition_id, name, total_points, weekly_points, chapter, updated_at
-                ) values (?, ?, ?, ?, ?, ?, now())
-                on conflict (expedition_id, player_id) where expedition_id is not null
+                  player_id, expedition_id, server_id, name, total_points, weekly_points, chapter, updated_at
+                ) values (?, ?, ?, ?, ?, ?, ?, now())
+                on conflict (server_id, expedition_id, player_id) where expedition_id is not null
                 do update set
                   name = excluded.name,
                   total_points = excluded.total_points,
@@ -407,10 +472,11 @@ public final class DatabaseClient implements AutoCloseable {
                 """)) {
             statement.setObject(1, playerId);
             statement.setObject(2, expeditionId);
-            statement.setString(3, snapshot.name());
-            statement.setInt(4, snapshot.totalPoints());
-            statement.setInt(5, snapshot.weeklyPoints());
-            statement.setInt(6, Math.max(1, snapshot.chapter()));
+            statement.setString(3, serverId);
+            statement.setString(4, snapshot.name());
+            statement.setInt(5, snapshot.totalPoints());
+            statement.setInt(6, snapshot.weeklyPoints());
+            statement.setInt(7, Math.max(1, snapshot.chapter()));
             statement.executeUpdate();
         }
     }
@@ -424,19 +490,7 @@ public final class DatabaseClient implements AutoCloseable {
                     ) values (
                       ?, ?::goal_kind, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, true
                     )
-                    on conflict (id) do update set
-                      kind = excluded.kind,
-                      name = excluded.name,
-                      description = excluded.description,
-                      objective_type = excluded.objective_type,
-                      targets = excluded.targets,
-                      amount = excluded.amount,
-                      points = excluded.points,
-                      min_chapter = excluded.min_chapter,
-                      chapter_id = excluded.chapter_id,
-                      chapter_order = excluded.chapter_order,
-                      rewards = excluded.rewards,
-                      active = true
+                    on conflict (id) do nothing
                     """)) {
                 statement.setString(1, goalId);
                 statement.setString(2, meta.goalKind());
@@ -474,13 +528,32 @@ public final class DatabaseClient implements AutoCloseable {
         }
     }
 
-    private UUID findPlayerId(Connection connection, UUID mcUuid) throws SQLException {
+    private UUID findPlayerId(Connection connection, String serverId, UUID mcUuid) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-                "select id from players where mc_uuid = ?")) {
-            statement.setString(1, mcUuid.toString());
+                "select id from players where server_id = ? and mc_uuid = ?")) {
+            statement.setString(1, serverId);
+            statement.setString(2, mcUuid.toString());
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() ? uuid(rs, "id") : null;
             }
+        }
+    }
+
+    private static void requireServer(String serverId) throws SQLException {
+        if (serverId == null || serverId.isBlank()) {
+            throw new SQLException("server-id je prázdne. Zápis do databázy je odmietnutý.");
+        }
+    }
+
+    private static void ensureServer(Connection connection, String serverId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                insert into servers (id, label, first_seen_at)
+                values (?, ?, now())
+                on conflict (id) do nothing
+                """)) {
+            statement.setString(1, serverId);
+            statement.setString(2, serverId);
+            statement.executeUpdate();
         }
     }
 

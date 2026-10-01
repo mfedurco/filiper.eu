@@ -6,6 +6,11 @@ shared-quest-count: 2
 party-quest-count: 1
 timezone: Europe/Bratislava
 
+# Vlastný reťazec tohto Minecraft servera. Povinné, keď je database.enabled: true.
+# Každé nasadenie má iný reťazec, napríklad test, survival, creative. Predvolená hodnota nie je.
+# Prázdne server-id odmietne zápis do databázy.
+server-id: ""
+
 # Postgres (Neon). Paper beží dlho, preto priama (nepooled) JDBC URL.
 # Heslo do gitu nedávajte. Prázdna jdbc-url znamená DATABASE_URL_UNPOOLED alebo .env.local.
 database:
