@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · Výprava",
   },
   description:
-    "Slovenský survival quest systém pre triedny Minecraft server – kampaň, denné úlohy, party a rebríček.",
+    "Výprava – denné, týždenné, dlhodobé a spoločné survival ciele pre Paper server. Web na Supabase + Vercel.",
 };
 
 export default function RootLayout({

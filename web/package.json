@@ -1,11 +1,11 @@
 {
   "name": "vyprava-web",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 43127 -H 0.0.0.0",
+    "dev": "next dev --port 43127",
     "build": "next build",
-    "start": "next start -p 43127 -H 0.0.0.0",
+    "start": "next start --port 43127",
     "lint": "eslint"
   },
   "dependencies": {

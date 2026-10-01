@@ -16,11 +16,11 @@ export function PageHero({
       {eyebrow ? (
         <p className="badge mb-4 animate-fade-up">{eyebrow}</p>
       ) : null}
-      <h1 className="font-display animate-fade-up text-4xl font-semibold tracking-tight text-pine-950 md:text-5xl">
+      <h1 className="font-display animate-fade-up text-4xl font-semibold tracking-tight text-moss-50 md:text-5xl">
         {title}
       </h1>
       {description ? (
-        <p className="mt-3 max-w-2xl animate-fade-up-delay text-base text-ink-muted md:text-lg">
+        <p className="mt-3 max-w-2xl animate-fade-up-delay text-base text-mist-muted md:text-lg">
           {description}
         </p>
       ) : null}
@@ -37,9 +37,9 @@ export function EmptyState({
   description: string;
 }) {
   return (
-    <div className="surface section-shell rounded-[var(--radius)] px-6 py-12 text-center">
-      <h2 className="font-display text-2xl text-pine-900">{title}</h2>
-      <p className="mt-2 text-ink-muted">{description}</p>
+    <div className="surface section-shell rounded-xl px-6 py-12 text-center">
+      <h2 className="font-display text-2xl text-moss-50">{title}</h2>
+      <p className="mt-2 text-mist-muted">{description}</p>
     </div>
   );
 }
@@ -53,9 +53,9 @@ export function ErrorState({
 }) {
   return (
     <div className="section-shell">
-      <div className="rounded-[var(--radius)] border border-[#c45c2a]/35 bg-[#f8e8dc] px-6 py-10 text-center">
-        <h2 className="font-display text-2xl text-[#7a3410]">{title}</h2>
-        <p className="mt-2 text-[#8a4a22]">{description}</p>
+      <div className="rounded-xl border border-[rgba(196,163,90,0.35)] bg-[rgba(196,163,90,0.08)] px-6 py-10 text-center">
+        <h2 className="font-display text-2xl text-lantern">{title}</h2>
+        <p className="mt-2 text-mist-muted">{description}</p>
       </div>
     </div>
   );
@@ -64,11 +64,11 @@ export function ErrorState({
 export function LoadingBlock({ label = "Načítavam…" }: { label?: string }) {
   return (
     <div className="section-shell py-16">
-      <div className="surface rounded-[var(--radius)] px-6 py-12 text-center">
-        <div className="mx-auto mb-4 h-2 w-40 overflow-hidden rounded-full bg-pine-100">
-          <div className="h-full w-1/2 animate-soft-pulse rounded-full bg-pine-600" />
+      <div className="surface rounded-xl px-6 py-12 text-center">
+        <div className="mx-auto mb-4 h-2 w-40 overflow-hidden rounded-sm bg-[rgba(201,214,204,0.12)]">
+          <div className="h-full w-1/2 animate-soft-pulse rounded-sm bg-moss-500" />
         </div>
-        <p className="text-ink-muted">{label}</p>
+        <p className="text-mist-muted">{label}</p>
       </div>
     </div>
   );
@@ -85,12 +85,12 @@ export function ProgressBar({
   return (
     <div
       className={cn(
-        "h-2.5 overflow-hidden rounded-full bg-[rgba(31,69,51,0.12)]",
+        "h-2.5 overflow-hidden rounded-sm bg-[rgba(201,214,204,0.12)]",
         className,
       )}
     >
       <div
-        className="animate-progress h-full rounded-full bg-gradient-to-r from-pine-700 to-ember-400"
+        className="animate-progress h-full rounded-sm bg-gradient-to-r from-moss-600 to-lantern"
         style={{ width: `${safe}%` }}
       />
     </div>

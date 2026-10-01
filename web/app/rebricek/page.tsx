@@ -29,7 +29,7 @@ export default async function RebricekPage() {
       <PageHero
         eyebrow="Kto vedie Výpravu?"
         title="Rebríček"
-        description="Celkové a týždenné body zo kampane, denných a party úloh. Demo dáta – neskôr sa napoja na plugin cez NEXT_PUBLIC_VYPRVA_API_URL."
+        description="Celkové a týždenné body z kampane, denných, týždenných, dlhodobých a spoločných cieľov. Demo seed funguje bez Minecraft servera; produkcia ide cez Supabase alebo /api/sync."
       >
         <Link href="/hrac" className="btn-secondary">
           Ukážkový hráč
@@ -42,9 +42,9 @@ export default async function RebricekPage() {
           description="Zatiaľ tu nie sú žiadni hráči."
         />
       ) : (
-        <div className="section-shell overflow-hidden rounded-[1.25rem] surface-strong">
+        <div className="section-shell overflow-hidden rounded-xl surface-strong">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-[var(--line)] bg-[rgba(31,69,51,0.08)] text-xs uppercase tracking-wide text-ink-muted">
+            <thead className="border-b border-[var(--line)] bg-[rgba(74,122,88,0.12)] text-xs uppercase tracking-wide text-mist-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold md:px-6">#</th>
                 <th className="px-4 py-3 font-semibold md:px-6">Hráč</th>
@@ -59,19 +59,19 @@ export default async function RebricekPage() {
                   key={entry.name}
                   className="border-b border-[var(--line)] last:border-b-0"
                 >
-                  <td className="px-4 py-4 font-display text-lg text-pine-800 md:px-6">
+                  <td className="px-4 py-4 font-display text-lg text-moss-100 md:px-6">
                     {index + 1}
                   </td>
-                  <td className="px-4 py-4 font-medium text-pine-950 md:px-6">
+                  <td className="px-4 py-4 font-medium text-moss-50 md:px-6">
                     {entry.name}
                   </td>
-                  <td className="px-4 py-4 text-ink-muted md:px-6">
+                  <td className="px-4 py-4 text-mist-muted md:px-6">
                     {entry.chapter}
                   </td>
-                  <td className="px-4 py-4 text-ink-muted md:px-6">
+                  <td className="px-4 py-4 text-mist-muted md:px-6">
                     {entry.weeklyPoints}
                   </td>
-                  <td className="px-4 py-4 font-display text-lg text-ember-500 md:px-6">
+                  <td className="px-4 py-4 font-display text-lg text-lantern md:px-6">
                     {entry.totalPoints}
                   </td>
                 </tr>

@@ -1,60 +1,43 @@
 # Výprava Web
 
-Next.js (App Router) + TypeScript + Tailwind frontend pre Minecraft Paper plugin **Výprava**.
+Next.js App Router + TypeScript + Tailwind + **Supabase** dashboard for the Výprava Paper plugin.
 
-## Spustenie
+## Run locally
 
 ```bash
-cd web
+cp .env.example .env.local
 npm install
 npm run dev
+# → http://localhost:43127
 ```
 
-Dev server beží na **http://0.0.0.0:43127** (port `43127`).
+Demo JSON under `data/` powers the UI when Supabase is not configured.
 
-Ďalšie skripty:
+## Env
 
-- `npm run build` – produkčný build
-- `npm start` – spustenie buildu na porte 43127
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (RLS read) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sync + admin writes |
+| `VYPRVA_ADMIN_PASSWORD` | `/admin` cookie secret |
+| `VYPRVA_PLUGIN_API_URL` | Paper plugin base (`http://host:8765`) |
+| `VYPRVA_PLUGIN_API_TOKEN` | Optional `X-Vyprava-Token` |
 
-## Admin
-
-- URL: `/admin`
-- Heslo z env: `VYPRVA_ADMIN_PASSWORD` (default lokálne: `vyprava`)
+## Supabase
 
 ```bash
-VYPRVA_ADMIN_PASSWORD=vyprava npm run dev
+# In Supabase SQL editor:
+# 1) supabase/migrations/001_init.sql
+# 2) supabase/seed.sql
 ```
 
-Admin ukladá JSON do `data/quests/` (`campaign.json`, `daily.json`, `party.json`, `settings.json`) a synchronizuje aj zrkadlá v `data/`. Paper plugin môže tieto súbory syncnúť / konvertovať späť do YAML.
+Tables: `players`, `goals`, `milestones`, `player_progress`, `contributions`, `shared_goal_state`, `leaderboard_snapshot`, `admin_settings`.
 
-## Dáta
+## Vercel + Cloudflare
 
-| Súbor | Obsah |
-| --- | --- |
-| `data/campaign.json` / `data/quests/campaign.json` | 8 kapitol kampane |
-| `data/daily.json` / `data/quests/daily.json` | Denný pool |
-| `data/party.json` / `data/quests/party.json` | Party pool |
-| `data/leaderboard.json` | Demo rebríček |
-| `data/progress-demo.json` | Demo postup hráča |
-| `data/quests/settings.json` | Prepínače odmien / bodov / min. kapitoly |
+- Vercel root directory: `web`
+- Cloudflare DNS: CNAME `vyprava` → `cname.vercel-dns.com` for **filiper.eu**
+- Add domain in Vercel project settings
 
-Ak je nastavené `NEXT_PUBLIC_VYPRVA_API_URL`, app sa najprv pokúsi načítať live dáta z plugin API; inak používa lokálne JSON.
-
-## Verejné routy
-
-- `/` – hero / landing
-- `/kampan` – roadmapa kampane
-- `/denne` – denný pool
-- `/party` – party pool
-- `/rebricek` – rebríček
-- `/hrac` – demo postup hráča
-- `/admin` – editor questov
-
-API (lokálne JSON):
-
-- `GET /api/quests/campaign|daily|party`
-- `GET /api/leaderboard`
-- `GET /api/progress`
-- `POST/DELETE /api/admin/login`
-- `GET/PUT /api/admin/quests`
+See root [README](../README.md) for full deploy steps.
