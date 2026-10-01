@@ -26,15 +26,15 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 
 ```bash
 ./gradlew jar
-# → build/libs/Vyprava-1.0.0.jar
+# → build/libs/filiper.eu-vyprava.jar
 ```
 
 ### Install
 
-1. Copy `build/libs/Vyprava-1.0.0.jar` into the Paper `plugins/` folder.
+1. Copy `build/libs/filiper.eu-vyprava.jar` into the Paper `plugins/` folder.
 2. Start Paper `26.2-124` (Java 25).
-3. Edit `plugins/Vyprava/config.yml` (counts, timezone, web API).
-4. Quest definitions are **not** loaded from YAML. They come from the active expedition in Postgres (`web/neon/002_expeditions.sql`). Set `database.enabled: true` and a direct `database.jdbc-url`, or export `DATABASE_URL_UNPOOLED` (the plugin also reads `.env.local` next to the server). Leave the URL empty in git. YAML under `plugins/Vyprava/data/` is only the player-progress outbox: every change is saved there first and pushed asynchronously, retrying until Neon accepts it.
+3. Edit `plugins/filiper.eu-vyprava/config.yml` (counts, timezone, web API).
+4. Quest definitions are **not** loaded from YAML. They come from the active expedition in Postgres (`web/neon/002_expeditions.sql`). Set `database.enabled: true` and a direct `database.jdbc-url`, or export `DATABASE_URL_UNPOOLED` (the plugin also reads `.env.local` next to the server). Leave the URL empty in git. YAML under `plugins/filiper.eu-vyprava/data/` is only the player-progress outbox: every change is saved there first and pushed asynchronously, retrying until Neon accepts it.
 5. The plugin checks expedition `starts_at` / `ends_at` in `Europe/Bratislava` on startup and about once a minute. The window that contains now becomes the single active expedition.
 
 ### Commands

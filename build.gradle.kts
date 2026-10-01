@@ -47,7 +47,7 @@ tasks.processResources {
 }
 
 tasks.jar {
-    archiveBaseName.set("Vyprava")
+    archiveFileName.set("filiper.eu-vyprava.jar")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from({
         configurations.runtimeClasspath.get()

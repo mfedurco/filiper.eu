@@ -1,4 +1,4 @@
-name: Vyprava
+name: filiper.eu-vyprava
 version: '${version}'
 main: sk.vyprava.VypravaPlugin
 api-version: '26.2'
