@@ -13,6 +13,14 @@ export type QuestType =
   | "ENTER_WORLD"
   | string;
 
+export type GoalKind =
+  | "daily"
+  | "weekly"
+  | "long_term"
+  | "shared"
+  | "campaign"
+  | "party";
+
 export type Quest = {
   id: string;
   name: string;
@@ -23,6 +31,8 @@ export type Quest = {
   points: number;
   rewards?: RewardItem[];
   minChapter?: number;
+  kind?: GoalKind;
+  periodKey?: string | null;
 };
 
 export type Milestone = {
@@ -47,6 +57,7 @@ export type Campaign = {
 
 export type QuestPool = {
   pool: Quest[];
+  periodKey?: string;
 };
 
 export type LeaderboardEntry = {
@@ -54,6 +65,19 @@ export type LeaderboardEntry = {
   totalPoints: number;
   weeklyPoints: number;
   chapter: number;
+};
+
+export type Contribution = {
+  name: string;
+  amount: number;
+  uuid?: string;
+};
+
+export type SharedGoal = Quest & {
+  progress: number;
+  completed: boolean;
+  contributions: Contribution[];
+  periodKey?: string | null;
 };
 
 export type QuestProgressEntry = {
@@ -89,6 +113,8 @@ export type PlayerProgress = {
   questProgress: Record<string, QuestProgressEntry>;
   completedMilestones: string[];
   dailyQuests: DailyProgress[];
+  weeklyQuests?: DailyProgress[];
+  longTermQuests?: DailyProgress[];
   partyQuest: PartyProgress | null;
 };
 
