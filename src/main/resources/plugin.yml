@@ -3,16 +3,16 @@ version: '${version}'
 main: sk.vyprava.VypravaPlugin
 api-version: '26.2'
 authors: [Miroslav]
-description: Kampan, denne questy, party ulohy a rebricky pre survival server.
+description: Denné, týždenné, dlhodobé a spoločné ciele + kampaň pre survival server.
 commands:
   vyprava:
-    description: Hlavny prikaz pluginu Vyprava
-    usage: /vyprava <questy|kampan|denne|party|top|odmeny|help>
+    description: Hlavný príkaz pluginu Výprava
+    usage: /vyprava <kampan|denne|tyzdenne|dlhodobe|spolocne|party|top|help>
     aliases: [vp, questy, quest]
 permissions:
   vyprava.use:
-    description: Zakladne pouzivanie Vypravy
+    description: Základné používanie Výpravy
     default: true
   vyprava.admin:
-    description: Admin prikazy (reload, reset)
+    description: Admin príkazy (reload)
     default: op

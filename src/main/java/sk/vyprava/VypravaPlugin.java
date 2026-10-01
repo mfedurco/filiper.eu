@@ -36,7 +36,7 @@ public final class VypravaPlugin extends JavaPlugin {
         }
 
         getServer().getAsyncScheduler().runAtFixedRate(this, task -> store.save(), 5, 5, TimeUnit.MINUTES);
-        getLogger().info("Vyprava enabled — kampan, denne questy, party a web API.");
+        getLogger().info("Výprava zapnutá — denné, týždenné, dlhodobé, spoločné ciele a web API.");
     }
 
     @Override
@@ -59,7 +59,7 @@ public final class VypravaPlugin extends JavaPlugin {
     }
 
     private void reloadAll() {
-        prefix = getConfig().getString("messages.prefix", "<gold><bold>Vyprava</bold></gold> <dark_gray>»</dark_gray> ");
+        prefix = getConfig().getString("messages.prefix", "<gold><bold>Výprava</bold></gold> <dark_gray>»</dark_gray> ");
         ZoneId zone;
         try {
             zone = ZoneId.of(getConfig().getString("timezone", "Europe/Bratislava"));
@@ -83,6 +83,9 @@ public final class VypravaPlugin extends JavaPlugin {
                 prefix,
                 zone,
                 getConfig().getInt("daily-quest-count", 3),
+                getConfig().getInt("weekly-quest-count", 2),
+                getConfig().getInt("longterm-quest-count", 2),
+                getConfig().getInt("shared-quest-count", 2),
                 getConfig().getInt("party-quest-count", 1)
         );
 

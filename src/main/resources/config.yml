@@ -1,19 +1,25 @@
-# Vyprava – nastavenia
+# Výprava – nastavenia
 daily-quest-count: 3
+weekly-quest-count: 2
+longterm-quest-count: 2
+shared-quest-count: 2
 party-quest-count: 1
 timezone: Europe/Bratislava
 
-# HTTP API pre web dashboard (hraci + admin mimo MC serveru)
+# HTTP API pre web dashboard / Supabase sync
 web:
   enabled: true
   bind: 0.0.0.0
   port: 8765
-  # Volitelny token; web posiela header X-Vyprava-Token
+  # Voliteľný token; web posiela header X-Vyprava-Token
   api-token: ""
 
 messages:
-  prefix: "<gold><bold>Vyprava</bold></gold> <dark_gray>»</dark_gray> "
-  daily-reset: "<green>Nove denne ulohy su pripravene! Napis <yellow>/vyprava denne</yellow>.</green>"
-  chapter-complete: "<gold><bold>Kapitola dokoncena!</bold></gold> <gray>{chapter}</gray>"
-  quest-complete: "<green>Uloha splnena:</green> <yellow>{quest}</yellow> <gray>(+{points} bodov)</gray>"
+  prefix: "<gold><bold>Výprava</bold></gold> <dark_gray>»</dark_gray> "
+  daily-reset: "<green>Nové denné úlohy sú pripravené! Napíš <yellow>/vyprava denne</yellow>.</green>"
+  weekly-reset: "<aqua>Nové týždenné úlohy! <yellow>/vyprava tyzdenne</yellow></aqua>"
+  longterm-reset: "<gold>Nové dlhodobé ciele! <yellow>/vyprava dlhodobe</yellow></gold>"
+  shared-complete: "<green><bold>Spoločný cieľ dokončený!</bold></green> <yellow>{quest}</yellow>"
+  chapter-complete: "<gold><bold>Kapitola dokončená!</bold></gold> <gray>{chapter}</gray>"
+  quest-complete: "<green>Úloha splnená:</green> <yellow>{quest}</yellow> <gray>(+{points} bodov)</gray>"
   reward-given: "<aqua>Odmena:</aqua> <white>{reward}</white>"
