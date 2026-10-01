@@ -12,7 +12,7 @@ Minecraft **Paper 26.2** survival plugin + web pre synov domáci server a spolu�
 - party úlohy
 - rebríčky
 - zobrazenie **in-game** (`/vyprava …`) aj na **webe**
-- web stack: **Next.js + Supabase + Vercel**
+- web stack: **Next.js + Neon Postgres + Vercel**
 - doména na Cloudflare: **filiper.eu** (napr. `vyprava.filiper.eu` → Vercel)
 
 ## Server
@@ -29,7 +29,7 @@ Java 25 minimum
 | `src/main/java/sk/vyprava/` | Paper plugin (questy, party, shared goals, Web API) |
 | `src/main/resources/quests/` | campaign, daily, weekly, longterm, party, shared YAML |
 | `web/` | Next.js dashboard (hráči + admin) |
-| `web/supabase/` | SQL schémy (ak prítomné) |
+| `web/neon/` | Neon SQL schéma + demo seed |
 | `build.gradle.kts` | paper-api `26.2.build.124-stable`, Java 25 |
 
 ### Herné príkazy (cieľ)
@@ -53,7 +53,7 @@ Java 25 minimum
 
 - Public: `/`, `/kampan`, `/denne`, `/party`, `/rebricek`, `/hrac`
 - Admin: `/admin` (`VYPRVA_ADMIN_PASSWORD`, default `vyprava`)
-- Env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_VYPRVA_API_URL`
+- Env: `DATABASE_URL` (Neon pooled), `VYPRVA_ADMIN_PASSWORD`, voliteľne `VYPRVA_PLUGIN_API_URL`
 - Dev: `cd web && npm run dev -- -p 43127 -H 0.0.0.0`
 
 ## Jazyk / UX
@@ -63,17 +63,17 @@ Java 25 minimum
 
 ## Otvorené / rozpracované
 
-1. Doladiť Supabase ako primárny data layer + Vercel deploy na filiper.eu
+1. Vercel deploy na filiper.eu (`DATABASE_URL` + `VYPRVA_ADMIN_PASSWORD`)
 2. Cloudflare DNS: CNAME `vyprava` (alebo root podľa potreby) → Vercel
 3. Overiť build JAR na Java 25: `./gradlew jar`
-4. Doplniť sync plugin ↔ Supabase (periodický export / webhook)
-5. Admin na webe: editácia cieľov/odmien do Supabase (nie len lokálne JSON)
+4. Pravidelný sync plugin → Neon (ručný `POST /api/sync` už zapisuje hráčov, rebríček a spoločné ciele)
+5. Admin na webe: quest pooly sa stále ukladajú do lokálneho JSON; do Neon ide len `admin_settings`
 
 ## Ako pokračovať v projekte filiper.eu
 
 1. Otvor nového Cloud Agenta **na repo filiper.eu** (nie na dočasnom draft repo).
 2. Skopíruj obsah tohto súboru do prvého promptu, alebo pushni tento commit do filiper.eu.
-3. Pokračuj: Supabase migrácia, Vercel, DNS, test JAR na Paper 26.2.
+3. Pokračuj: Vercel, DNS, test JAR na Paper 26.2. Neon schéma je v `web/neon/`.
 
 ## Kontakt / vlastník
 

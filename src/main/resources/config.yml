@@ -6,7 +6,7 @@ shared-quest-count: 2
 party-quest-count: 1
 timezone: Europe/Bratislava
 
-# HTTP API pre web dashboard / Supabase sync
+# HTTP API pre web dashboard / Neon sync
 web:
   enabled: true
   bind: 0.0.0.0

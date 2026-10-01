@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceSupabase } from "@/lib/supabase";
+import { getSql } from "@/lib/db";
 
 /**
- * Sync endpoint: pulls from Paper plugin HTTP API and upserts into Supabase.
+ * Sync endpoint: pulls from the Paper plugin HTTP API and upserts into Neon.
  * POST with header X-Vyprava-Admin matching VYPRVA_ADMIN_PASSWORD
- * or Authorization: Bearer <SUPABASE_SERVICE_ROLE not required; uses admin password>.
+ * (Authorization: Bearer <password> is also accepted).
  */
 export async function POST(request: NextRequest) {
   const admin = process.env.VYPRVA_ADMIN_PASSWORD?.trim() || "vyprava";
@@ -15,12 +15,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const service = createServiceSupabase();
-  if (!service) {
-    return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL missing" },
-      { status: 503 },
-    );
+  const sql = getSql();
+  if (!sql) {
+    return NextResponse.json({ error: "DATABASE_URL missing" }, { status: 503 });
   }
 
   const pluginBase =
@@ -64,21 +61,34 @@ export async function POST(request: NextRequest) {
     }>;
 
     for (const p of players) {
-      await service.from("players").upsert(
-        {
-          mc_uuid: p.uuid,
-          name: p.name,
-          chapter: p.chapter,
-          total_points: p.totalPoints,
-          weekly_points: p.weeklyPoints,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "mc_uuid" },
-      );
+      await sql`
+        insert into players (
+          mc_uuid, name, chapter, total_points, weekly_points, updated_at
+        ) values (
+          ${p.uuid},
+          ${p.name},
+          ${p.chapter},
+          ${p.totalPoints},
+          ${p.weeklyPoints},
+          now()
+        )
+        on conflict (mc_uuid) do update set
+          name = excluded.name,
+          chapter = excluded.chapter,
+          total_points = excluded.total_points,
+          weekly_points = excluded.weekly_points,
+          updated_at = excluded.updated_at
+      `;
     }
 
-    const { data: dbPlayers } = await service.from("players").select("id, mc_uuid, name");
-    const byUuid = new Map((dbPlayers ?? []).map((p) => [p.mc_uuid, p]));
+    const dbPlayers = (await sql`
+      select id, mc_uuid, name from players
+    `) as Array<{ id: string; mc_uuid: string | null; name: string }>;
+    const byUuid = new Map(
+      dbPlayers
+        .filter((p) => p.mc_uuid)
+        .map((p) => [p.mc_uuid as string, p]),
+    );
 
     for (const row of (leaderboardJson.leaderboard ?? []) as Array<{
       uuid?: string;
@@ -87,16 +97,28 @@ export async function POST(request: NextRequest) {
       weeklyPoints: number;
       chapter: number;
     }>) {
-      const player = row.uuid ? byUuid.get(row.uuid) : [...byUuid.values()].find((p) => p.name === row.name);
+      const player = row.uuid
+        ? byUuid.get(row.uuid)
+        : dbPlayers.find((p) => p.name === row.name);
       if (!player) continue;
-      await service.from("leaderboard_snapshot").upsert({
-        player_id: player.id,
-        name: row.name,
-        total_points: row.totalPoints,
-        weekly_points: row.weeklyPoints,
-        chapter: row.chapter,
-        updated_at: new Date().toISOString(),
-      });
+      await sql`
+        insert into leaderboard_snapshot (
+          player_id, name, total_points, weekly_points, chapter, updated_at
+        ) values (
+          ${player.id},
+          ${row.name},
+          ${row.totalPoints},
+          ${row.weeklyPoints},
+          ${row.chapter},
+          now()
+        )
+        on conflict (player_id) do update set
+          name = excluded.name,
+          total_points = excluded.total_points,
+          weekly_points = excluded.weekly_points,
+          chapter = excluded.chapter,
+          updated_at = excluded.updated_at
+      `;
     }
 
     for (const goal of (sharedJson.active ?? []) as Array<{
@@ -106,25 +128,37 @@ export async function POST(request: NextRequest) {
       periodKey?: string;
       contributions?: Array<{ uuid: string; name: string; amount: number }>;
     }>) {
-      await service.from("shared_goal_state").upsert({
-        goal_id: goal.questId,
-        progress: goal.progress,
-        completed: goal.completed,
-        period_key: goal.periodKey ?? null,
-        updated_at: new Date().toISOString(),
-      });
+      await sql`
+        insert into shared_goal_state (
+          goal_id, progress, completed, period_key, updated_at
+        ) values (
+          ${goal.questId},
+          ${goal.progress},
+          ${goal.completed},
+          ${goal.periodKey ?? null},
+          now()
+        )
+        on conflict (goal_id) do update set
+          progress = excluded.progress,
+          completed = excluded.completed,
+          period_key = excluded.period_key,
+          updated_at = excluded.updated_at
+      `;
       for (const c of goal.contributions ?? []) {
         const player = byUuid.get(c.uuid);
         if (!player) continue;
-        await service.from("contributions").upsert(
-          {
-            goal_id: goal.questId,
-            player_id: player.id,
-            amount: c.amount,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "goal_id,player_id" },
-        );
+        await sql`
+          insert into contributions (goal_id, player_id, amount, updated_at)
+          values (
+            ${goal.questId},
+            ${player.id},
+            ${c.amount},
+            now()
+          )
+          on conflict (goal_id, player_id) do update set
+            amount = excluded.amount,
+            updated_at = excluded.updated_at
+        `;
       }
     }
 
@@ -134,8 +168,9 @@ export async function POST(request: NextRequest) {
       shared: (sharedJson.active ?? []).length,
     });
   } catch (error) {
+    const raw = error instanceof Error ? error.message : "sync failed";
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "sync failed" },
+      { error: raw.replace(/postgres(?:ql)?:\/\/\S+/gi, "postgresql://[redacted]") },
       { status: 500 },
     );
   }

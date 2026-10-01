@@ -2,7 +2,7 @@
 
 Paper **26.2** quest plugin + public web app for a kids survival server.
 
-In-game goals and leaderboards stay visible via `/vyprava …` and on the web (Next.js + Supabase + Vercel), planned on **filiper.eu** (e.g. `vyprava.filiper.eu`).
+In-game goals and leaderboards stay visible via `/vyprava …` and on the web (Next.js + Neon Postgres + Vercel), planned on **filiper.eu** (e.g. `vyprava.filiper.eu`).
 
 ## Goal types
 
@@ -49,7 +49,7 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 /vyprava reload   # admin
 ```
 
-### HTTP JSON API (for web / Supabase sync)
+### HTTP JSON API (for web / Neon sync)
 
 Enabled by default on port **8765**:
 
@@ -59,7 +59,7 @@ Enabled by default on port **8765**:
 
 CORS is open for the dashboard. Optional `web.api-token` → clients send `X-Vyprava-Token`.
 
-## Web (Next.js + Supabase + Vercel)
+## Web (Next.js + Neon + Vercel)
 
 Source: [`web/`](web/).
 
@@ -67,31 +67,29 @@ Source: [`web/`](web/).
 
 ```bash
 cd web
-cp .env.example .env.local   # optional Supabase; demo JSON works without it
+cp .env.example .env.local   # optional Neon; demo JSON works without it
 npm install
 npm run dev                  # http://localhost:43127
 ```
 
-Without Supabase env vars the UI loads **demo seed** from `web/data/` (including shared contributions).
+Without `DATABASE_URL` the UI loads **demo seed** from `web/data/` (including shared contributions). `npm run build` does not open a database connection.
 
-### Supabase
+### Neon Postgres
 
-1. Create a project.
-2. Run `web/supabase/migrations/001_init.sql` then `web/supabase/seed.sql`.
+1. Create a Neon project and copy the **pooled** connection string (host contains `-pooler`).
+2. In the Neon SQL editor, run `web/neon/001_init.sql`, then `web/neon/002_seed.sql` for demo rows.
 3. Set in Vercel / `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (sync + admin settings write)
+   - `DATABASE_URL` (pooled connection string; server-only — do not use `NEXT_PUBLIC_`)
    - `VYPRVA_ADMIN_PASSWORD`
    - optional `VYPRVA_PLUGIN_API_URL` (+ token)
 
-**RLS:** public `SELECT` on goals, leaderboard, contributions; writes via **service role** only.
+There is no Row Level Security. The Neon role behind `DATABASE_URL` can read and write every table the app uses.
 
-**Sync:** `POST /api/sync` with header `X-Vyprava-Admin: <VYPRVA_ADMIN_PASSWORD>` pulls plugin API → Supabase.
+**Sync:** `POST /api/sync` with header `X-Vyprava-Admin: <VYPRVA_ADMIN_PASSWORD>` pulls the plugin API into Neon.
 
 ### Admin
 
-`/admin` — password from `VYPRVA_ADMIN_PASSWORD` (default `vyprava`). Configure pools / settings; persists to `web/data/quests/` and settings into Supabase when service role is set.
+`/admin` — password from `VYPRVA_ADMIN_PASSWORD` (default `vyprava`). Configure pools / settings; persists to `web/data/quests/`. Settings also upsert into Neon `admin_settings` when `DATABASE_URL` is set.
 
 ### Public routes
 
@@ -100,7 +98,7 @@ Without Supabase env vars the UI loads **demo seed** from `web/data/` (including
 ### Deploy on Vercel + Cloudflare (`filiper.eu`)
 
 1. Import the repo in Vercel; **Root Directory** = `web`.
-2. Add env vars from `.env.example`.
+2. Add env vars from `.env.example` (`DATABASE_URL`, `VYPRVA_ADMIN_PASSWORD`, optional plugin URL).
 3. Deploy → note the `*.vercel.app` URL.
 4. In **Cloudflare DNS** for `filiper.eu`:
    - Type **CNAME**, Name `vyprava` (or `@` / preferred host), Target `cname.vercel-dns.com` (or the hostname Vercel shows).
@@ -114,7 +112,7 @@ Without Supabase env vars the UI loads **demo seed** from `web/data/` (including
 src/main/java/sk/vyprava/   Paper plugin
 src/main/resources/quests/  YAML goal pools
 web/                        Next.js App Router dashboard
-web/supabase/               SQL migration + seed
+web/neon/                   Neon SQL schema + demo seed
 ```
 
 ## License / notes

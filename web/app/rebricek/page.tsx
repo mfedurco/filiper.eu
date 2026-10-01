@@ -29,7 +29,7 @@ export default async function RebricekPage() {
       <PageHero
         eyebrow="Kto vedie Výpravu?"
         title="Rebríček"
-        description="Celkové a týždenné body z kampane, denných, týždenných, dlhodobých a spoločných cieľov. Demo seed funguje bez Minecraft servera; produkcia ide cez Supabase alebo /api/sync."
+        description="Celkové a týždenné body z kampane, denných, týždenných, dlhodobých a spoločných cieľov. Demo seed funguje bez Minecraft servera; produkcia ide cez Neon alebo /api/sync."
       >
         <Link href="/hrac" className="btn-secondary">
           Ukážkový hráč

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · Výprava",
   },
   description:
-    "Výprava – denné, týždenné, dlhodobé a spoločné survival ciele pre Paper server. Web na Supabase + Vercel.",
+    "Výprava – denné, týždenné, dlhodobé a spoločné survival ciele pre Paper server. Web na Neon Postgres + Vercel.",
 };
 
 export default function RootLayout({

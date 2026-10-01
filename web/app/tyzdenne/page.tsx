@@ -40,7 +40,7 @@ export default async function TyzdennePage() {
       {!pool.length ? (
         <EmptyState
           title="Týždenný pool je prázdny"
-          description="V admine alebo cez Supabase pridaj týždenné ciele."
+          description="V admine alebo v Neon databáze pridaj týždenné ciele."
         />
       ) : (
         <div className="section-shell surface-strong rounded-xl px-6 md:px-8">

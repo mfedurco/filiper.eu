@@ -40,7 +40,7 @@ export default async function DlhodobePage() {
       {!pool.length ? (
         <EmptyState
           title="Žiadne dlhodobé ciele"
-          description="Pridaj sezónne ciele v admine alebo cez Supabase seed."
+          description="Pridaj sezónne ciele v admine alebo cez Neon seed."
         />
       ) : (
         <div className="section-shell surface-strong rounded-xl px-6 md:px-8">

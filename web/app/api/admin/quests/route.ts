@@ -68,7 +68,10 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Uloženie zlyhalo.",
+        error: (error instanceof Error ? error.message : "Uloženie zlyhalo.").replace(
+          /postgres(?:ql)?:\/\/\S+/gi,
+          "postgresql://[redacted]",
+        ),
       },
       { status: 500 },
     );
@@ -76,6 +79,6 @@ export async function PUT(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    note: "Uložené lokálne (a do Supabase settings ak je service role).",
+    note: "Uložené lokálne (a do Neon admin_settings, ak je nastavené DATABASE_URL).",
   });
 }

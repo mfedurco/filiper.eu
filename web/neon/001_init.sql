@@ -1,17 +1,25 @@
--- Výprava Supabase schema
--- Public read for goals / leaderboard / contributions
--- Admin writes via service role or authenticated admin
+-- Výprava schema for Neon Postgres.
+-- Run in the Neon SQL editor (or psql) before web/neon/002_seed.sql.
+--
+-- Plain Postgres only. No Row Level Security, no auth.uid(), no Supabase
+-- Storage, no Realtime. The role in DATABASE_URL can read and write;
+-- keep that connection string on the server.
 
-create extension if not exists "pgcrypto";
+create extension if not exists pgcrypto;
 
-create type goal_kind as enum (
-  'daily',
-  'weekly',
-  'long_term',
-  'shared',
-  'campaign',
-  'party'
-);
+do $$
+begin
+  create type goal_kind as enum (
+    'daily',
+    'weekly',
+    'long_term',
+    'shared',
+    'campaign',
+    'party'
+  );
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists players (
   id uuid primary key default gen_random_uuid(),
@@ -101,24 +109,3 @@ create index if not exists idx_goals_kind on goals(kind);
 create index if not exists idx_player_progress_player on player_progress(player_id);
 create index if not exists idx_contributions_goal on contributions(goal_id);
 create index if not exists idx_leaderboard_total on leaderboard_snapshot(total_points desc);
-
-alter table players enable row level security;
-alter table goals enable row level security;
-alter table milestones enable row level security;
-alter table player_progress enable row level security;
-alter table contributions enable row level security;
-alter table shared_goal_state enable row level security;
-alter table leaderboard_snapshot enable row level security;
-alter table admin_settings enable row level security;
-
--- Public read policies
-create policy "Public read players" on players for select using (true);
-create policy "Public read goals" on goals for select using (true);
-create policy "Public read milestones" on milestones for select using (true);
-create policy "Public read progress" on player_progress for select using (true);
-create policy "Public read contributions" on contributions for select using (true);
-create policy "Public read shared state" on shared_goal_state for select using (true);
-create policy "Public read leaderboard" on leaderboard_snapshot for select using (true);
-create policy "Public read settings" on admin_settings for select using (true);
-
--- Writes: service role bypasses RLS. No anon write policies on purpose.

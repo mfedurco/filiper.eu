@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 /**
- * HTTP JSON API pre web / Supabase sync.
+ * HTTP JSON API pre web / Neon sync.
  * GET /api/health, /campaign, /daily, /weekly, /longterm, /shared, /party-quests,
  * /leaderboard, /players, /parties
  */

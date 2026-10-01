@@ -1,8 +1,18 @@
--- Demo seed for Výprava (safe to re-run after truncate)
--- Run after 001_init.sql in Supabase SQL editor.
+-- Demo seed for Výprava on Neon.
+-- Run after web/neon/001_init.sql.
+-- Re-running truncates app tables and reloads these demo rows.
+-- Do not run this on a database that already has live /api/sync data.
 
-truncate table contributions, player_progress, shared_goal_state, leaderboard_snapshot,
-  milestones, goals, players, admin_settings restart identity cascade;
+truncate table
+  contributions,
+  player_progress,
+  shared_goal_state,
+  leaderboard_snapshot,
+  milestones,
+  goals,
+  players,
+  admin_settings
+restart identity cascade;
 
 insert into admin_settings (id, rewards_enabled, points_enabled, min_chapter_enforced)
 values (1, true, true, true);
@@ -67,7 +77,7 @@ insert into goals (id, kind, name, description, objective_type, targets, amount,
    array['IRON_ORE','DEEPSLATE_IRON_ORE'], 80, 40, 3, null, null,
    '[{"material":"DIAMOND","amount":2}]'::jsonb);
 
-update goals set period_key = '2026-W40', active = true where kind in ('weekly','shared');
+update goals set period_key = '2026-W40', active = true where kind in ('weekly', 'shared');
 update goals set period_key = '2026-S4', active = true where kind = 'long_term';
 
 insert into shared_goal_state (goal_id, progress, completed, period_key) values
