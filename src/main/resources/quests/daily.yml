@@ -1,0 +1,153 @@
+# Denné úlohy – každý deň sa hráčovi náhodne priradia 3 z poolu
+# podľa odomknutej kapitoly (min-chapter).
+
+pool:
+  d_wood:
+    name: "Ráno v lese"
+    description: "Získaj 24 klád."
+    type: BREAK_BLOCK
+    targets: [OAK_LOG, BIRCH_LOG, SPRUCE_LOG, DARK_OAK_LOG, JUNGLE_LOG, ACACIA_LOG, MANGROVE_LOG, CHERRY_LOG]
+    amount: 24
+    points: 8
+    min-chapter: 1
+    rewards:
+      - material: APPLE
+        amount: 4
+
+  d_stone:
+    name: "Kamenár"
+    description: "Vyťaž 48 kameňa."
+    type: BREAK_BLOCK
+    targets: [STONE, COBBLESTONE, DEEPSLATE, COBBLED_DEEPSLATE]
+    amount: 48
+    points: 8
+    min-chapter: 1
+    rewards:
+      - material: COAL
+        amount: 8
+
+  d_cook:
+    name: "Kuchár dňa"
+    description: "Upeč 12 jedál."
+    type: SMELT_ITEM
+    targets: [COOKED_BEEF, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, BAKED_POTATO, COOKED_SALMON, COOKED_COD]
+    amount: 12
+    points: 8
+    min-chapter: 1
+    rewards:
+      - material: BREAD
+        amount: 8
+
+  d_build:
+    name: "Stavba dňa"
+    description: "Polož 48 blokov."
+    type: PLACE_BLOCK
+    targets: [ANY_SOLID]
+    amount: 48
+    points: 8
+    min-chapter: 2
+    rewards:
+      - material: IRON_NUGGET
+        amount: 18
+
+  d_coal:
+    name: "Uhlíková smena"
+    description: "Vyťaž 20 uhlia."
+    type: BREAK_BLOCK
+    targets: [COAL_ORE, DEEPSLATE_COAL_ORE]
+    amount: 20
+    points: 10
+    min-chapter: 3
+    rewards:
+      - material: TORCH
+        amount: 24
+
+  d_iron:
+    name: "Železná smena"
+    description: "Vyťaž 12 železnej rudy."
+    type: BREAK_BLOCK
+    targets: [IRON_ORE, DEEPSLATE_IRON_ORE]
+    amount: 12
+    points: 12
+    min-chapter: 3
+    rewards:
+      - material: IRON_INGOT
+        amount: 4
+
+  d_zombie:
+    name: "Nočná hliadka"
+    description: "Zabi 10 zombie."
+    type: KILL_ENTITY
+    targets: [ZOMBIE, HUSK, DROWNED, ZOMBIE_VILLAGER]
+    amount: 10
+    points: 12
+    min-chapter: 4
+    rewards:
+      - material: ROTTEN_FLESH
+        amount: 0
+      - material: IRON_INGOT
+        amount: 3
+      - material: ARROW
+        amount: 16
+
+  d_skeleton:
+    name: "Lukostrelec"
+    description: "Zabi 8 kostlivcov."
+    type: KILL_ENTITY
+    targets: [SKELETON, STRAY, BOGGED]
+    amount: 8
+    points: 12
+    min-chapter: 4
+    rewards:
+      - material: BONE
+        amount: 8
+      - material: EXPERIENCE_BOTTLE
+        amount: 2
+
+  d_wheat:
+    name: "Žatva"
+    description: "Pozbieraj 24 pšenice."
+    type: BREAK_BLOCK
+    targets: [WHEAT]
+    amount: 24
+    points: 10
+    min-chapter: 5
+    rewards:
+      - material: BREAD
+        amount: 12
+
+  d_diamond:
+    name: "Diamantový deň"
+    description: "Vyťaž 2 diamantové rudy."
+    type: BREAK_BLOCK
+    targets: [DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE]
+    amount: 2
+    points: 20
+    min-chapter: 6
+    rewards:
+      - material: DIAMOND
+        amount: 1
+
+  d_nether_walk:
+    name: "Pekelná prechádzka"
+    description: "Vstúp dnes do Netheru."
+    type: ENTER_WORLD
+    targets: [NETHER]
+    amount: 1
+    points: 15
+    min-chapter: 7
+    rewards:
+      - material: GOLD_INGOT
+        amount: 4
+
+  d_blaze:
+    name: "Blaze hunt"
+    description: "Zabi 4 blaze."
+    type: KILL_ENTITY
+    targets: [BLAZE]
+    amount: 4
+    points: 18
+    min-chapter: 7
+    rewards:
+      - material: BLAZE_POWDER
+        amount: 4

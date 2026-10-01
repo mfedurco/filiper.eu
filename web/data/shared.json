@@ -1,0 +1,39 @@
+[
+  {
+    "id": "s_bridge",
+    "name": "Postavte spoločne most",
+    "description": "Spoločne položte 800 blokov – postavte most cez údolie.",
+    "type": "PLACE_BLOCK",
+    "targets": ["ANY_SOLID"],
+    "amount": 800,
+    "points": 60,
+    "progress": 512,
+    "completed": false,
+    "periodKey": "2026-W40",
+    "rewards": [{ "material": "EMERALD", "amount": 8 }],
+    "contributions": [
+      { "name": "ZuzkaBuilder", "amount": 180 },
+      { "name": "MajoCraft", "amount": 140 },
+      { "name": "EmaExplorer", "amount": 100 },
+      { "name": "PeterPickaxe", "amount": 92 }
+    ]
+  },
+  {
+    "id": "s_iron",
+    "name": "Spoločne vyťažte železo",
+    "description": "Spoločne vyťažte 500 železnej rudy.",
+    "type": "BREAK_BLOCK",
+    "targets": ["IRON_ORE", "DEEPSLATE_IRON_ORE"],
+    "amount": 500,
+    "points": 70,
+    "progress": 210,
+    "completed": false,
+    "periodKey": "2026-W40",
+    "rewards": [{ "material": "IRON_BLOCK", "amount": 4 }],
+    "contributions": [
+      { "name": "TomasMine", "amount": 95 },
+      { "name": "MajoCraft", "amount": 70 },
+      { "name": "NinaNether", "amount": 45 }
+    ]
+  }
+]

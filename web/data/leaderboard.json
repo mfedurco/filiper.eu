@@ -1,0 +1,62 @@
+[
+  {
+    "name": "MajoCraft",
+    "totalPoints": 1240,
+    "weeklyPoints": 180,
+    "chapter": 6
+  },
+  {
+    "name": "ZuzkaBuilder",
+    "totalPoints": 1115,
+    "weeklyPoints": 210,
+    "chapter": 5
+  },
+  {
+    "name": "TomasMine",
+    "totalPoints": 980,
+    "weeklyPoints": 95,
+    "chapter": 5
+  },
+  {
+    "name": "EmaExplorer",
+    "totalPoints": 870,
+    "weeklyPoints": 160,
+    "chapter": 4
+  },
+  {
+    "name": "PeterPickaxe",
+    "totalPoints": 720,
+    "weeklyPoints": 140,
+    "chapter": 4
+  },
+  {
+    "name": "NinaNether",
+    "totalPoints": 640,
+    "weeklyPoints": 220,
+    "chapter": 3
+  },
+  {
+    "name": "KuboKiller",
+    "totalPoints": 505,
+    "weeklyPoints": 80,
+    "chapter": 3
+  },
+  {
+    "name": "SaraSurvival",
+    "totalPoints": 390,
+    "weeklyPoints": 120,
+    "chapter": 2
+  },
+  {
+    "name": "AdamApple",
+    "totalPoints": 240,
+    "weeklyPoints": 65,
+    "chapter": 2
+  },
+  {
+    "name": "LilaLog",
+    "totalPoints": 95,
+    "weeklyPoints": 95,
+    "chapter": 1
+  }
+]

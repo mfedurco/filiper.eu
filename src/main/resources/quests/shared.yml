@@ -1,0 +1,86 @@
+# Spoločné ciele celého servera – príspevky všetkých hráčov, odmeny pre prispievateľov.
+
+pool:
+  s_bridge:
+    name: "Postavte spoločne most"
+    description: "Spoločne položte 800 blokov – postavte most cez údolie."
+    type: PLACE_BLOCK
+    targets: [ANY_SOLID]
+    amount: 800
+    points: 60
+    min-chapter: 1
+    rewards:
+      - material: EMERALD
+        amount: 8
+      - material: EXPERIENCE_BOTTLE
+        amount: 8
+
+  s_iron:
+    name: "Spoločne vyťažte železo"
+    description: "Spoločne vyťažte 500 železnej rudy."
+    type: BREAK_BLOCK
+    targets: [IRON_ORE, DEEPSLATE_IRON_ORE]
+    amount: 500
+    points: 70
+    min-chapter: 3
+    rewards:
+      - material: IRON_BLOCK
+        amount: 4
+      - material: DIAMOND
+        amount: 2
+
+  s_wood:
+    name: "Spoločný sklad dreva"
+    description: "Spoločne získajte 1000 klád."
+    type: BREAK_BLOCK
+    targets: [OAK_LOG, BIRCH_LOG, SPRUCE_LOG, DARK_OAK_LOG, JUNGLE_LOG, ACACIA_LOG, MANGROVE_LOG, CHERRY_LOG]
+    amount: 1000
+    points: 50
+    min-chapter: 1
+    rewards:
+      - material: IRON_INGOT
+        amount: 16
+      - material: COOKED_BEEF
+        amount: 32
+
+  s_mobs:
+    name: "Spoločná nočná hliadka"
+    description: "Spoločne zabite 300 nepriateľských mobov."
+    type: KILL_ENTITY
+    targets: [ZOMBIE, SKELETON, CREEPER, SPIDER, ENDERMAN, WITCH, HUSK, STRAY, DROWNED]
+    amount: 300
+    points: 70
+    min-chapter: 4
+    rewards:
+      - material: GOLDEN_APPLE
+        amount: 4
+      - material: ARROW
+        amount: 64
+
+  s_nether:
+    name: "Spoločná výprava do Netheru"
+    description: "Spoločne zabite 50 blaze."
+    type: KILL_ENTITY
+    targets: [BLAZE]
+    amount: 50
+    points: 90
+    min-chapter: 7
+    rewards:
+      - material: BLAZE_ROD
+        amount: 8
+      - material: GOLD_INGOT
+        amount: 16
+
+  s_dragon:
+    name: "Triedny drak"
+    description: "Spoločne zabiť Ender Dragona."
+    type: KILL_ENTITY
+    targets: [ENDER_DRAGON]
+    amount: 1
+    points: 120
+    min-chapter: 8
+    rewards:
+      - material: DIAMOND_BLOCK
+        amount: 1
+      - material: ENCHANTED_GOLDEN_APPLE
+        amount: 1

@@ -1,0 +1,49 @@
+{
+  "periodKey": "2026-W40",
+  "pool": [
+    {
+      "id": "w_wood",
+      "name": "Týždeň drevorubača",
+      "description": "Získaj 200 klád počas týždňa.",
+      "type": "BREAK_BLOCK",
+      "targets": ["OAK_LOG", "BIRCH_LOG", "SPRUCE_LOG", "DARK_OAK_LOG"],
+      "amount": 200,
+      "points": 40,
+      "minChapter": 1,
+      "rewards": [{ "material": "IRON_INGOT", "amount": 12 }]
+    },
+    {
+      "id": "w_iron",
+      "name": "Železný týždeň",
+      "description": "Vyťaž 64 železnej rudy.",
+      "type": "BREAK_BLOCK",
+      "targets": ["IRON_ORE", "DEEPSLATE_IRON_ORE"],
+      "amount": 64,
+      "points": 55,
+      "minChapter": 3,
+      "rewards": [{ "material": "IRON_BLOCK", "amount": 2 }]
+    },
+    {
+      "id": "w_mobs",
+      "name": "Hliadka týždňa",
+      "description": "Zabi 60 nepriateľských mobov.",
+      "type": "KILL_ENTITY",
+      "targets": ["ZOMBIE", "SKELETON", "CREEPER", "SPIDER"],
+      "amount": 60,
+      "points": 55,
+      "minChapter": 4,
+      "rewards": [{ "material": "GOLDEN_APPLE", "amount": 2 }]
+    },
+    {
+      "id": "w_build",
+      "name": "Staviteľský týždeň",
+      "description": "Polož 250 blokov.",
+      "type": "PLACE_BLOCK",
+      "targets": ["ANY_SOLID"],
+      "amount": 250,
+      "points": 45,
+      "minChapter": 2,
+      "rewards": [{ "material": "EMERALD", "amount": 4 }]
+    }
+  ]
+}

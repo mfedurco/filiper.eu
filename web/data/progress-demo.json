@@ -1,0 +1,86 @@
+{
+  "playerName": "MajoCraft",
+  "uuid": "demo-0000-1111-2222",
+  "currentChapter": 6,
+  "totalPoints": 1240,
+  "weeklyPoints": 180,
+  "completedQuests": [
+    "c1_wood",
+    "c1_table",
+    "c1_pick",
+    "c1_stone",
+    "c1_food",
+    "c2_bed",
+    "c2_chest",
+    "c2_furnace",
+    "c2_build",
+    "c2_doors",
+    "c3_coal",
+    "c3_iron",
+    "c3_smelt_iron",
+    "c3_iron_pick",
+    "c3_diamond",
+    "c4_zombie",
+    "c4_skeleton",
+    "c4_creeper",
+    "c4_bow",
+    "c4_shield",
+    "c5_wheat",
+    "c5_bread",
+    "c5_animals",
+    "c5_wool",
+    "c5_carrot",
+    "c6_helmet",
+    "c6_chest",
+    "c6_legs"
+  ],
+  "questProgress": {
+    "c6_boots": {
+      "current": 0,
+      "target": 1
+    },
+    "c6_diamond_pick": {
+      "current": 0,
+      "target": 1
+    }
+  },
+  "completedMilestones": [
+    "chapter_1",
+    "chapter_2",
+    "chapter_3",
+    "chapter_4",
+    "chapter_5"
+  ],
+  "dailyQuests": [
+    {
+      "id": "d_iron",
+      "name": "Železná smena",
+      "current": 8,
+      "target": 12,
+      "completed": false
+    },
+    {
+      "id": "d_wheat",
+      "name": "Žatva",
+      "current": 24,
+      "target": 24,
+      "completed": true
+    },
+    {
+      "id": "d_diamond",
+      "name": "Diamantový deň",
+      "current": 0,
+      "target": 2,
+      "completed": false
+    }
+  ],
+  "partyQuest": {
+    "id": "p_mine",
+    "name": "Banícka partia",
+    "current": 54,
+    "target": 80,
+    "completed": false,
+    "partyName": "Trieda 6.B"
+  },
+  "chapterName": "Remeselník"
+}

@@ -1,0 +1,764 @@
+{
+  "title": "Cesta Preživších",
+  "chapters": [
+    {
+      "id": "chapter_1",
+      "order": 1,
+      "name": "Základy",
+      "description": "Prvý deň v divočine. Drevo, kameň, jedlo.",
+      "quests": [
+        {
+          "id": "c1_wood",
+          "name": "Zberač dreva",
+          "description": "Získaj 32 dubových alebo brezových klád.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "OAK_LOG",
+            "BIRCH_LOG",
+            "SPRUCE_LOG",
+            "DARK_OAK_LOG",
+            "JUNGLE_LOG",
+            "ACACIA_LOG",
+            "MANGROVE_LOG",
+            "CHERRY_LOG"
+          ],
+          "amount": 32,
+          "points": 10,
+          "rewards": []
+        },
+        {
+          "id": "c1_table",
+          "name": "Dielňa",
+          "description": "Vyrob crafting table.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "CRAFTING_TABLE"
+          ],
+          "amount": 1,
+          "points": 10,
+          "rewards": []
+        },
+        {
+          "id": "c1_pick",
+          "name": "Prvý nástroj",
+          "description": "Vyrob drevený krumpáč.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "WOODEN_PICKAXE"
+          ],
+          "amount": 1,
+          "points": 10,
+          "rewards": []
+        },
+        {
+          "id": "c1_stone",
+          "name": "Kameňolom",
+          "description": "Vyťaž 24 kameňa / deepslate.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "STONE",
+            "COBBLESTONE",
+            "DEEPSLATE",
+            "COBBLED_DEEPSLATE"
+          ],
+          "amount": 24,
+          "points": 15,
+          "rewards": []
+        },
+        {
+          "id": "c1_food",
+          "name": "Večera",
+          "description": "Upeč 8 kusov mäsa (steak, bravčové, kuracie, baranie).",
+          "type": "SMELT_ITEM",
+          "targets": [
+            "COOKED_BEEF",
+            "COOKED_PORKCHOP",
+            "COOKED_CHICKEN",
+            "COOKED_MUTTON"
+          ],
+          "amount": 8,
+          "points": 15,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Prvý tábor",
+        "rewards": [
+          {
+            "material": "IRON_INGOT",
+            "amount": 8
+          },
+          {
+            "material": "BREAD",
+            "amount": 16
+          },
+          {
+            "material": "TORCH",
+            "amount": 32
+          }
+        ],
+        "points": 50
+      }
+    },
+    {
+      "id": "chapter_2",
+      "order": 2,
+      "name": "Domov",
+      "description": "Postav si bezpečné zázemie.",
+      "quests": [
+        {
+          "id": "c2_bed",
+          "name": "Posteľ",
+          "description": "Vyrob posteľ.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "WHITE_BED",
+            "RED_BED",
+            "BLUE_BED",
+            "GREEN_BED",
+            "YELLOW_BED",
+            "BLACK_BED",
+            "ORANGE_BED",
+            "MAGENTA_BED",
+            "LIGHT_BLUE_BED",
+            "LIME_BED",
+            "PINK_BED",
+            "GRAY_BED",
+            "LIGHT_GRAY_BED",
+            "CYAN_BED",
+            "PURPLE_BED",
+            "BROWN_BED"
+          ],
+          "amount": 1,
+          "points": 15,
+          "rewards": []
+        },
+        {
+          "id": "c2_chest",
+          "name": "Sklad",
+          "description": "Vyrob 2 truhlice.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "CHEST"
+          ],
+          "amount": 2,
+          "points": 10,
+          "rewards": []
+        },
+        {
+          "id": "c2_furnace",
+          "name": "Pec",
+          "description": "Vyrob pec.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "FURNACE"
+          ],
+          "amount": 1,
+          "points": 10,
+          "rewards": []
+        },
+        {
+          "id": "c2_build",
+          "name": "Staviteľ",
+          "description": "Polož 64 stavebných blokov (akýkoľvek plný blok).",
+          "type": "PLACE_BLOCK",
+          "targets": [
+            "ANY_SOLID"
+          ],
+          "amount": 64,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c2_doors",
+          "name": "Vchod",
+          "description": "Vyrob dvere.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "OAK_DOOR",
+            "BIRCH_DOOR",
+            "SPRUCE_DOOR",
+            "DARK_OAK_DOOR",
+            "JUNGLE_DOOR",
+            "ACACIA_DOOR",
+            "MANGROVE_DOOR",
+            "CHERRY_DOOR",
+            "IRON_DOOR"
+          ],
+          "amount": 1,
+          "points": 10,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Vlastný dom",
+        "rewards": [
+          {
+            "material": "IRON_INGOT",
+            "amount": 16
+          },
+          {
+            "material": "GOLDEN_APPLE",
+            "amount": 2
+          },
+          {
+            "material": "EXPERIENCE_BOTTLE",
+            "amount": 8
+          }
+        ],
+        "points": 75
+      }
+    },
+    {
+      "id": "chapter_3",
+      "order": 3,
+      "name": "Baník",
+      "description": "Zostúp do jaskýň a prinies ore.",
+      "quests": [
+        {
+          "id": "c3_coal",
+          "name": "Uhlík",
+          "description": "Vyťaž 32 uhlia.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "COAL_ORE",
+            "DEEPSLATE_COAL_ORE"
+          ],
+          "amount": 32,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c3_iron",
+          "name": "Železná žila",
+          "description": "Vyťaž 24 železnej rudy.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "IRON_ORE",
+            "DEEPSLATE_IRON_ORE"
+          ],
+          "amount": 24,
+          "points": 25,
+          "rewards": []
+        },
+        {
+          "id": "c3_smelt_iron",
+          "name": "Hutník",
+          "description": "Vyrob 24 železných ingotov.",
+          "type": "SMELT_ITEM",
+          "targets": [
+            "IRON_INGOT"
+          ],
+          "amount": 24,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c3_iron_pick",
+          "name": "Lepší nástroj",
+          "description": "Vyrob železný krumpáč.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "IRON_PICKAXE"
+          ],
+          "amount": 1,
+          "points": 15,
+          "rewards": []
+        },
+        {
+          "id": "c3_diamond",
+          "name": "Prvý diamant",
+          "description": "Vyťaž 1 diamantovú rudu.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "DIAMOND_ORE",
+            "DEEPSLATE_DIAMOND_ORE"
+          ],
+          "amount": 1,
+          "points": 40,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Hlbiny",
+        "rewards": [
+          {
+            "material": "DIAMOND",
+            "amount": 3
+          },
+          {
+            "material": "IRON_BLOCK",
+            "amount": 2
+          },
+          {
+            "material": "GOLDEN_APPLE",
+            "amount": 4
+          }
+        ],
+        "points": 100
+      }
+    },
+    {
+      "id": "chapter_4",
+      "order": 4,
+      "name": "Lovec",
+      "description": "Nauč sa brániť v noci.",
+      "quests": [
+        {
+          "id": "c4_zombie",
+          "name": "Lov zombie",
+          "description": "Zabi 15 zombie.",
+          "type": "KILL_ENTITY",
+          "targets": [
+            "ZOMBIE",
+            "ZOMBIE_VILLAGER",
+            "HUSK",
+            "DROWNED"
+          ],
+          "amount": 15,
+          "points": 25,
+          "rewards": []
+        },
+        {
+          "id": "c4_skeleton",
+          "name": "Lov kostlivcov",
+          "description": "Zabi 10 kostlivcov.",
+          "type": "KILL_ENTITY",
+          "targets": [
+            "SKELETON",
+            "STRAY",
+            "BOGGED"
+          ],
+          "amount": 10,
+          "points": 25,
+          "rewards": []
+        },
+        {
+          "id": "c4_creeper",
+          "name": "Pozor, creeper!",
+          "description": "Zabi 5 creeperov.",
+          "type": "KILL_ENTITY",
+          "targets": [
+            "CREEPER"
+          ],
+          "amount": 5,
+          "points": 30,
+          "rewards": []
+        },
+        {
+          "id": "c4_bow",
+          "name": "Strelec",
+          "description": "Vyrob luk.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "BOW"
+          ],
+          "amount": 1,
+          "points": 15,
+          "rewards": []
+        },
+        {
+          "id": "c4_shield",
+          "name": "Štít",
+          "description": "Vyrob štít.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "SHIELD"
+          ],
+          "amount": 1,
+          "points": 15,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Nočný lovec",
+        "rewards": [
+          {
+            "material": "ENCHANTED_GOLDEN_APPLE",
+            "amount": 1
+          },
+          {
+            "material": "ARROW",
+            "amount": 64
+          },
+          {
+            "material": "DIAMOND",
+            "amount": 2
+          }
+        ],
+        "points": 100
+      }
+    },
+    {
+      "id": "chapter_5",
+      "order": 5,
+      "name": "Farmár",
+      "description": "Jedlo a zvieratá = dlhodobé prežitie.",
+      "quests": [
+        {
+          "id": "c5_wheat",
+          "name": "Obilie",
+          "description": "Pozbieraj 32 pšenice.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "WHEAT"
+          ],
+          "amount": 32,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c5_bread",
+          "name": "Pekár",
+          "description": "Vyrob 16 chlebov.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "BREAD"
+          ],
+          "amount": 16,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c5_animals",
+          "name": "Pastier",
+          "description": "Zabi 10 zvierat na mäso (krava, ošípaná, ovca, kura).",
+          "type": "KILL_ENTITY",
+          "targets": [
+            "COW",
+            "PIG",
+            "SHEEP",
+            "CHICKEN"
+          ],
+          "amount": 10,
+          "points": 15,
+          "rewards": []
+        },
+        {
+          "id": "c5_wool",
+          "name": "Vlna",
+          "description": "Získaj 16 vlny (položením/ťažbou vlnených blokov alebo craftom nie – break white wool from sheep drops via pickup).",
+          "type": "PICKUP_ITEM",
+          "targets": [
+            "WHITE_WOOL",
+            "ORANGE_WOOL",
+            "MAGENTA_WOOL",
+            "LIGHT_BLUE_WOOL",
+            "YELLOW_WOOL",
+            "LIME_WOOL",
+            "PINK_WOOL",
+            "GRAY_WOOL",
+            "LIGHT_GRAY_WOOL",
+            "CYAN_WOOL",
+            "PURPLE_WOOL",
+            "BLUE_WOOL",
+            "BROWN_WOOL",
+            "GREEN_WOOL",
+            "RED_WOOL",
+            "BLACK_WOOL"
+          ],
+          "amount": 16,
+          "points": 15,
+          "rewards": []
+        },
+        {
+          "id": "c5_carrot",
+          "name": "Zelenina",
+          "description": "Pozbieraj 16 mrkiev alebo zemiakov.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "CARROTS",
+            "POTATOES"
+          ],
+          "amount": 16,
+          "points": 15,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Hospodárstvo",
+        "rewards": [
+          {
+            "material": "EMERALD",
+            "amount": 8
+          },
+          {
+            "material": "BONE_MEAL",
+            "amount": 32
+          },
+          {
+            "material": "GOLDEN_CARROT",
+            "amount": 16
+          }
+        ],
+        "points": 100
+      }
+    },
+    {
+      "id": "chapter_6",
+      "order": 6,
+      "name": "Remeselník",
+      "description": "Plná výbava zo železa a viac.",
+      "quests": [
+        {
+          "id": "c6_helmet",
+          "name": "Prilba",
+          "description": "Vyrob železnú prilbu.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "IRON_HELMET"
+          ],
+          "amount": 1,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c6_chest",
+          "name": "Hrudák",
+          "description": "Vyrob železný hrudák.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "IRON_CHESTPLATE"
+          ],
+          "amount": 1,
+          "points": 25,
+          "rewards": []
+        },
+        {
+          "id": "c6_legs",
+          "name": "Nohavice",
+          "description": "Vyrob železné nohavice.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "IRON_LEGGINGS"
+          ],
+          "amount": 1,
+          "points": 25,
+          "rewards": []
+        },
+        {
+          "id": "c6_boots",
+          "name": "Topánky",
+          "description": "Vyrob železné topánky.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "IRON_BOOTS"
+          ],
+          "amount": 1,
+          "points": 20,
+          "rewards": []
+        },
+        {
+          "id": "c6_diamond_pick",
+          "name": "Diamantový nástroj",
+          "description": "Vyrob diamantový krumpáč.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "DIAMOND_PICKAXE"
+          ],
+          "amount": 1,
+          "points": 40,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Majster remesla",
+        "rewards": [
+          {
+            "material": "DIAMOND",
+            "amount": 5
+          },
+          {
+            "material": "ANVIL",
+            "amount": 1
+          },
+          {
+            "material": "EXPERIENCE_BOTTLE",
+            "amount": 16
+          }
+        ],
+        "points": 125
+      }
+    },
+    {
+      "id": "chapter_7",
+      "order": 7,
+      "name": "Nether",
+      "description": "Vstup do pekelného rozmeru.",
+      "quests": [
+        {
+          "id": "c7_enter",
+          "name": "Portál",
+          "description": "Vstúp do Netheru.",
+          "type": "ENTER_WORLD",
+          "targets": [
+            "NETHER"
+          ],
+          "amount": 1,
+          "points": 40,
+          "rewards": []
+        },
+        {
+          "id": "c7_quartz",
+          "name": "Kremeň",
+          "description": "Vyťaž 24 nether quartz.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "NETHER_QUARTZ_ORE"
+          ],
+          "amount": 24,
+          "points": 30,
+          "rewards": []
+        },
+        {
+          "id": "c7_gold",
+          "name": "Nether gold",
+          "description": "Vyťaž 16 nether gold ore.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "NETHER_GOLD_ORE"
+          ],
+          "amount": 16,
+          "points": 30,
+          "rewards": []
+        },
+        {
+          "id": "c7_blaze",
+          "name": "Blaze",
+          "description": "Zabi 8 blaze.",
+          "type": "KILL_ENTITY",
+          "targets": [
+            "BLAZE"
+          ],
+          "amount": 8,
+          "points": 40,
+          "rewards": []
+        },
+        {
+          "id": "c7_debris",
+          "name": "Ancient Debris",
+          "description": "Vyťaž 1 ancient debris.",
+          "type": "BREAK_BLOCK",
+          "targets": [
+            "ANCIENT_DEBRIS"
+          ],
+          "amount": 1,
+          "points": 60,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Pekelník",
+        "rewards": [
+          {
+            "material": "NETHERITE_SCRAP",
+            "amount": 2
+          },
+          {
+            "material": "BLAZE_ROD",
+            "amount": 8
+          },
+          {
+            "material": "GOLD_BLOCK",
+            "amount": 4
+          },
+          {
+            "material": "ENCHANTED_GOLDEN_APPLE",
+            "amount": 2
+          }
+        ],
+        "points": 150
+      }
+    },
+    {
+      "id": "chapter_8",
+      "order": 8,
+      "name": "Legenda triedy",
+      "description": "Finálna skúška prežitia – End a sláva.",
+      "quests": [
+        {
+          "id": "c8_eyes",
+          "name": "Oči Endera",
+          "description": "Vyrob 12 očí Endera.",
+          "type": "CRAFT_ITEM",
+          "targets": [
+            "ENDER_EYE"
+          ],
+          "amount": 12,
+          "points": 50,
+          "rewards": []
+        },
+        {
+          "id": "c8_end",
+          "name": "Koniec sveta",
+          "description": "Vstúp do Endu.",
+          "type": "ENTER_WORLD",
+          "targets": [
+            "THE_END"
+          ],
+          "amount": 1,
+          "points": 60,
+          "rewards": []
+        },
+        {
+          "id": "c8_dragon",
+          "name": "Drak",
+          "description": "Zabi Ender Dragona (spoločne).",
+          "type": "KILL_ENTITY",
+          "targets": [
+            "ENDER_DRAGON"
+          ],
+          "amount": 1,
+          "points": 200,
+          "rewards": []
+        },
+        {
+          "id": "c8_elytra",
+          "name": "Elytra",
+          "description": "Získaj elytru.",
+          "type": "PICKUP_ITEM",
+          "targets": [
+            "ELYTRA"
+          ],
+          "amount": 1,
+          "points": 80,
+          "rewards": []
+        },
+        {
+          "id": "c8_shulker",
+          "name": "Shulker shell",
+          "description": "Získaj 4 shulker shelle.",
+          "type": "PICKUP_ITEM",
+          "targets": [
+            "SHULKER_SHELL"
+          ],
+          "amount": 4,
+          "points": 60,
+          "rewards": []
+        }
+      ],
+      "milestone": {
+        "name": "Legenda servera",
+        "rewards": [
+          {
+            "material": "NETHERITE_INGOT",
+            "amount": 4
+          },
+          {
+            "material": "BEACON",
+            "amount": 1
+          },
+          {
+            "material": "DIAMOND_BLOCK",
+            "amount": 4
+          },
+          {
+            "material": "ENCHANTED_GOLDEN_APPLE",
+            "amount": 4
+          }
+        ],
+        "points": 300
+      }
+    }
+  ]
+}
