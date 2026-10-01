@@ -1,0 +1,59 @@
+package sk.vyprava.db;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public record PartySnapshot(
+        String partyId,
+        String questKey,
+        int progress,
+        boolean completed,
+        int generation,
+        boolean pending,
+        Map<UUID, Integer> contributions
+) {
+    public PartySnapshot {
+        contributions = Map.copyOf(contributions);
+        questKey = questKey == null ? "" : questKey;
+    }
+
+    public PartySnapshot withGeneration(int generation, boolean pending) {
+        return new PartySnapshot(partyId, questKey, progress, completed, generation, pending, contributions);
+    }
+
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("questKey", questKey);
+        map.put("progress", progress);
+        map.put("completed", completed);
+        map.put("generation", generation);
+        map.put("pending", pending);
+        Map<String, Object> amounts = new LinkedHashMap<>();
+        for (Map.Entry<UUID, Integer> entry : contributions.entrySet()) {
+            amounts.put(entry.getKey().toString(), entry.getValue());
+        }
+        map.put("contributions", amounts);
+        return map;
+    }
+
+    public static PartySnapshot fromMap(String partyId, Map<String, Object> map) {
+        Map<UUID, Integer> contributions = new LinkedHashMap<>();
+        Object raw = map.get("contributions");
+        if (raw instanceof Map<?, ?> amounts) {
+            for (Map.Entry<?, ?> entry : amounts.entrySet()) {
+                int amount = entry.getValue() instanceof Number number ? number.intValue() : 0;
+                contributions.put(UUID.fromString(String.valueOf(entry.getKey())), amount);
+            }
+        }
+        return new PartySnapshot(
+                partyId,
+                map.get("questKey") == null ? "" : String.valueOf(map.get("questKey")),
+                map.get("progress") instanceof Number progress ? progress.intValue() : 0,
+                map.get("completed") instanceof Boolean completed && completed,
+                map.get("generation") instanceof Number generation ? generation.intValue() : 0,
+                map.get("pending") instanceof Boolean pending && pending,
+                contributions
+        );
+    }
+}

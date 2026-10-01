@@ -21,6 +21,21 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.124-stable")
     compileOnly("com.google.code.gson:gson:2.13.1")
+    implementation("org.postgresql:postgresql:42.7.7")
+    implementation("com.zaxxer:HikariCP:6.3.0")
+    implementation("org.slf4j:slf4j-jdk14:2.0.17")
+}
+
+sourceSets {
+    create("smoke") {
+        java.srcDir("src/smoke/java")
+        compileClasspath += sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().output
+    }
+}
+
+configurations.named("smokeImplementation") {
+    extendsFrom(configurations.implementation.get())
 }
 
 tasks.processResources {
@@ -33,6 +48,22 @@ tasks.processResources {
 
 tasks.jar {
     archiveBaseName.set("Vyprava")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.isFile && it.name.endsWith(".jar") }
+            .map { zipTree(it) }
+    })
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
+}
+
+tasks.register<JavaExec>("neonSmoke") {
+    group = "verification"
+    description = "JDBC smoke test. Reads DATABASE_URL_UNPOOLED from the environment or .env.local."
+    classpath = sourceSets.getByName("smoke").runtimeClasspath
+    mainClass.set("sk.vyprava.smoke.NeonSmoke")
+    workingDir = layout.projectDirectory.asFile
+    dependsOn("smokeClasses")
 }
 
 tasks.withType<JavaCompile> {

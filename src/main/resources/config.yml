@@ -6,6 +6,12 @@ shared-quest-count: 2
 party-quest-count: 1
 timezone: Europe/Bratislava
 
+# Postgres (Neon). Paper beží dlho, preto priama (nepooled) JDBC URL.
+# Heslo do gitu nedávajte. Prázdna jdbc-url znamená DATABASE_URL_UNPOOLED alebo .env.local.
+database:
+  enabled: false
+  jdbc-url: ""
+
 # HTTP API pre web dashboard / Supabase sync
 web:
   enabled: true

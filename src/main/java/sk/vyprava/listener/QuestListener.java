@@ -14,35 +14,40 @@ import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
+import sk.vyprava.VypravaPlugin;
 import sk.vyprava.quest.QuestService;
 
 public final class QuestListener implements Listener {
-    private final QuestService quests;
+    private final VypravaPlugin plugin;
 
-    public QuestListener(QuestService quests) {
-        this.quests = quests;
+    public QuestListener(VypravaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    private QuestService quests() {
+        return plugin.quests();
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        quests.progress(event.getPlayer());
+        quests().handleJoin(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        quests.handleBreak(event.getPlayer(), event.getBlock().getType());
+        quests().handleBreak(event.getPlayer(), event.getBlock().getType());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
-        quests.handlePlace(event.getPlayer(), event.getBlockPlaced().getType());
+        quests().handlePlace(event.getPlayer(), event.getBlockPlaced().getType());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onKill(EntityDeathEvent event) {
         Player killer = event.getEntity().getKiller();
         if (killer != null) {
-            quests.handleKill(killer, event.getEntityType());
+            quests().handleKill(killer, event.getEntityType());
         }
     }
 
@@ -59,14 +64,14 @@ public final class QuestListener implements Listener {
         if (event.isShiftClick()) {
             amount = Math.max(1, amount);
         }
-        quests.handleCraft(player, result.getType(), amount);
+        quests().handleCraft(player, result.getType(), amount);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSmelt(FurnaceExtractEvent event) {
         Material material = event.getItemType();
         if (material != null && !material.isAir()) {
-            quests.handleSmelt(event.getPlayer(), material, event.getItemAmount());
+            quests().handleSmelt(event.getPlayer(), material, event.getItemAmount());
         }
     }
 
@@ -76,11 +81,11 @@ public final class QuestListener implements Listener {
             return;
         }
         ItemStack stack = event.getItem().getItemStack();
-        quests.handlePickup(player, stack.getType(), stack.getAmount());
+        quests().handlePickup(player, stack.getType(), stack.getAmount());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorld(PlayerChangedWorldEvent event) {
-        quests.handleWorld(event.getPlayer(), event.getPlayer().getWorld().getEnvironment());
+        quests().handleWorld(event.getPlayer(), event.getPlayer().getWorld().getEnvironment());
     }
 }

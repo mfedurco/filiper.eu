@@ -1,0 +1,10 @@
+# Výprava – príklad konfigurácie. Tajomstvá sem nepatria.
+database:
+  enabled: false
+  jdbc-url: ""
+
+web:
+  enabled: true
+  bind: 0.0.0.0
+  port: 8765
+  api-token: ""

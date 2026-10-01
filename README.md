@@ -34,7 +34,8 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 1. Copy `build/libs/Vyprava-1.0.0.jar` into the Paper `plugins/` folder.
 2. Start Paper `26.2-124` (Java 25).
 3. Edit `plugins/Vyprava/config.yml` (counts, timezone, web API).
-4. Quest YAML lives under `plugins/Vyprava/quests/` (`campaign`, `daily`, `weekly`, `longterm`, `party`, `shared`).
+4. Quest definitions are **not** loaded from YAML. They come from the active expedition in Postgres (`web/neon/002_expeditions.sql`). Set `database.enabled: true` and a direct `database.jdbc-url`, or export `DATABASE_URL_UNPOOLED` (the plugin also reads `.env.local` next to the server). Leave the URL empty in git. YAML under `plugins/Vyprava/data/` is only the player-progress outbox: every change is saved there first and pushed asynchronously, retrying until Neon accepts it.
+5. The plugin checks expedition `starts_at` / `ends_at` in `Europe/Bratislava` on startup and about once a minute. The window that contains now becomes the single active expedition.
 
 ### Commands
 
@@ -112,9 +113,10 @@ Without Supabase env vars the UI loads **demo seed** from `web/data/` (including
 
 ```
 src/main/java/sk/vyprava/   Paper plugin
-src/main/resources/quests/  YAML goal pools
+src/main/resources/quests/  Historical quest copy, seeded into Neon (not loaded at runtime)
 web/                        Next.js App Router dashboard
-web/supabase/               SQL migration + seed
+web/neon/                   Expedition schema + seed
+web/supabase/               Original SQL migration + demo seed
 ```
 
 ## License / notes
