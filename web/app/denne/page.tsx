@@ -43,7 +43,7 @@ export default async function DennePage() {
           description="V admine pridaj denné úlohy do data/quests/daily.json."
         />
       ) : (
-        <div className="section-shell surface-strong rounded-[1.25rem] px-6 md:px-8">
+        <div className="section-shell surface-strong px-6 md:px-8">
           {pool
             .slice()
             .sort((a, b) => (a.minChapter ?? 1) - (b.minChapter ?? 1))

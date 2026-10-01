@@ -58,7 +58,7 @@ export default async function HracPage() {
       </PageHero>
 
       <div className="section-shell grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <section className="surface-strong rounded-[1.25rem] px-6 py-6 md:px-8">
+        <section className="surface-strong px-6 py-6 md:px-8">
           <h2 className="font-display text-2xl text-pine-950">
             Aktuálna kapitola
           </h2>
@@ -88,7 +88,7 @@ export default async function HracPage() {
         </section>
 
         <aside className="space-y-6">
-          <section className="surface-strong rounded-[1.25rem] px-6 py-6">
+          <section className="surface-strong px-6 py-6">
             <h2 className="font-display text-xl text-pine-950">Denné dnes</h2>
             <div className="mt-4 space-y-4">
               {progress.dailyQuests.map((q) => {
@@ -109,7 +109,7 @@ export default async function HracPage() {
           </section>
 
           {progress.partyQuest ? (
-            <section className="surface-strong rounded-[1.25rem] px-6 py-6">
+            <section className="surface-strong px-6 py-6">
               <p className="badge mb-3">{progress.partyQuest.partyName}</p>
               <h2 className="font-display text-xl text-pine-950">
                 {progress.partyQuest.name}
@@ -127,12 +127,12 @@ export default async function HracPage() {
             </section>
           ) : null}
 
-          <section className="surface-strong rounded-[1.25rem] px-6 py-6">
+          <section className="surface-strong px-6 py-6">
             <h2 className="font-display text-xl text-pine-950">Milníky</h2>
             <ul className="mt-3 space-y-2 text-sm text-ink-muted">
               {progress.completedMilestones.map((id) => (
                 <li key={id} className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-ember-500" />
+                  <span className="inline-block h-3 w-3 bg-[var(--accent)]" />
                   {id.replace("chapter_", "Kapitola ")}
                 </li>
               ))}

@@ -50,10 +50,10 @@ export default async function KampanPage() {
         {campaign.chapters.map((chapter, index) => (
           <section
             key={chapter.id}
-            className="surface-strong overflow-hidden rounded-[1.25rem] shadow-[var(--shadow)]"
+            className="surface-strong overflow-hidden"
             style={{ animationDelay: `${index * 60}ms` }}
           >
-            <div className="border-b border-[var(--line)] bg-[linear-gradient(120deg,rgba(31,69,51,0.12),transparent_55%)] px-6 py-6 md:px-8">
+            <div className="border-b border-[var(--line)] px-6 py-6 md:px-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pine-700">
@@ -78,7 +78,7 @@ export default async function KampanPage() {
               ))}
             </div>
 
-            <div className="border-t border-[var(--line)] bg-[rgba(232,224,207,0.55)] px-6 py-6 md:px-8">
+            <div className="milestone-band px-6 py-6 md:px-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="badge-ember badge mb-2">Milník</p>

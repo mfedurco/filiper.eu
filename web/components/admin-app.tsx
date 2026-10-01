@@ -72,8 +72,7 @@ function Field({
   );
 }
 
-const inputClass =
-  "w-full rounded-lg border border-[var(--line)] bg-white/70 px-3 py-2 text-sm text-ink outline-none focus:border-pine-600";
+const inputClass = "field-input";
 
 function RewardsEditor({
   rewards,
@@ -121,7 +120,7 @@ function RewardsEditor({
           />
           <button
             type="button"
-            className="rounded-lg px-2 text-sm text-[#8a4a22]"
+            className="rounded-lg px-2 text-sm text-danger"
             onClick={() => onChange(rewards.filter((_, i) => i !== index))}
           >
             ×
@@ -159,13 +158,13 @@ function QuestEditor({
   minChapterEnforced: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-white/50 p-4">
+    <div className="editor-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="font-display text-lg text-pine-900">{quest.name || "Úloha"}</p>
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs font-semibold uppercase tracking-wide text-[#8a4a22]"
+          className="text-xs font-semibold uppercase tracking-wide text-danger"
         >
           Odstrániť
         </button>
@@ -363,7 +362,7 @@ export function AdminApp({
             />
           </Field>
           {loginError ? (
-            <p className="text-sm text-[#8a4a22]">{loginError}</p>
+            <p className="text-sm text-danger">{loginError}</p>
           ) : null}
           <button type="submit" className="btn-primary" disabled={loggingIn}>
             {loggingIn ? "Prihlasujem…" : "Prihlásiť"}
@@ -375,7 +374,7 @@ export function AdminApp({
 
   if (!bundle) {
     return (
-      <div className="section-shell py-16 text-center text-[#8a4a22]">
+      <div className="section-shell py-16 text-center text-danger">
         {loadError ?? "Chýbajú dáta."}
       </div>
     );
@@ -404,7 +403,7 @@ export function AdminApp({
       </div>
 
       {status ? (
-        <p className="mt-4 rounded-xl border border-[var(--line)] bg-[rgba(31,69,51,0.08)] px-4 py-3 text-sm text-pine-800">
+        <p className="callout text-sm">
           {status}
         </p>
       ) : null}
@@ -451,7 +450,7 @@ export function AdminApp({
           {bundle.campaign.chapters.map((chapter, chapterIndex) => (
             <section
               key={chapter.id}
-              className="surface-strong rounded-[1.25rem] p-5 md:p-6"
+              className="surface-strong p-5 md:p-6"
             >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-display text-2xl text-pine-950">
@@ -459,7 +458,7 @@ export function AdminApp({
                 </h2>
                 <button
                   type="button"
-                  className="text-xs font-semibold uppercase tracking-wide text-[#8a4a22]"
+                  className="text-xs font-semibold uppercase tracking-wide text-danger"
                   onClick={() => {
                     const chapters = bundle.campaign.chapters.filter(
                       (_, i) => i !== chapterIndex,
@@ -601,7 +600,7 @@ export function AdminApp({
                 </button>
               </div>
 
-              <div className="mt-6 rounded-xl border border-[var(--line)] bg-[rgba(232,224,207,0.55)] p-4">
+              <div className="milestone-band mt-6 p-4">
                 <h3 className="font-display text-xl text-pine-950">Milník</h3>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <Field label="Názov">
@@ -757,7 +756,7 @@ export function AdminApp({
       ) : null}
 
       {tab === "nastavenia" ? (
-        <div className="mt-8 surface-strong max-w-xl space-y-4 rounded-[1.25rem] p-6">
+        <div className="surface-strong mt-8 max-w-xl space-y-4 p-6">
           {(
             [
               ["rewardsEnabled", "Odmeny zapnuté"],

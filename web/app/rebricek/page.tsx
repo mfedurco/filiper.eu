@@ -42,9 +42,9 @@ export default async function RebricekPage() {
           description="Zatiaľ tu nie sú žiadni hráči."
         />
       ) : (
-        <div className="section-shell overflow-hidden rounded-xl surface-strong">
+        <div className="section-shell surface-strong overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-[var(--line)] bg-[rgba(74,122,88,0.12)] text-xs uppercase tracking-wide text-mist-muted">
+            <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-mist-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold md:px-6">#</th>
                 <th className="px-4 py-3 font-semibold md:px-6">Hráč</th>

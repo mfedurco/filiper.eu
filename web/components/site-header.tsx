@@ -1,41 +1,55 @@
-import Link from "next/link";
+"use client";
 
-const links = [
-  { href: "/kampan", label: "Kampaň" },
-  { href: "/denne", label: "Denné" },
-  { href: "/tyzdenne", label: "Týždenné" },
-  { href: "/dlhodobe", label: "Dlhodobé" },
-  { href: "/spolocne", label: "Spoločné" },
-  { href: "/rebricek", label: "Rebríček" },
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const slots = [
+  { href: "/kampan", label: "Kampaň", icon: "/hlbina/icon-campaign.jpg" },
+  { href: "/denne", label: "Denné", icon: "/hlbina/icon-daily.jpg" },
+  { href: "/tyzdenne", label: "Týždenné", icon: "/hlbina/icon-weekly.jpg" },
+  { href: "/dlhodobe", label: "Dlhodobé", icon: "/hlbina/icon-longterm.jpg" },
+  { href: "/spolocne", label: "Spoločné", icon: "/hlbina/icon-shared.jpg" },
+  { href: "/party", label: "Party", icon: "/hlbina/icon-party.jpg" },
+  { href: "/rebricek", label: "Rebríček", icon: "/hlbina/icon-board.jpg" },
 ];
 
+function current(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function SiteHeader() {
+  const pathname = usePathname() ?? "/";
+
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[rgba(10,18,16,0.82)] backdrop-blur-md">
-      <div className="section-shell flex items-center justify-between gap-4 py-3">
-        <Link href="/" className="font-display text-xl font-semibold tracking-tight text-moss-50">
-          Výprava
+    <header className="hud">
+      <Link href="/" className="brand">
+        <span className="brand-mark">Výprava</span>
+        <small>triedny survival · domáci server</small>
+      </Link>
+      <nav className="hud-links" aria-label="Hráč a admin">
+        <Link href="/hrac" className="chip" aria-current={current(pathname, "/hrac") ? "page" : undefined}>
+          Hráč
         </Link>
-        <nav className="hidden items-center gap-4 text-sm font-medium text-mist-muted lg:flex">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="transition-colors hover:text-lantern"
-            >
-              {link.label}
-            </Link>
-          ))}
-          <Link href="/admin" className="text-lantern hover:text-moss-50">
-            Admin
+        <Link href="/admin" className="chip" aria-current={current(pathname, "/admin") ? "page" : undefined}>
+          Admin
+        </Link>
+      </nav>
+      <nav className="hotbar" aria-label="Typy cieľov">
+        {slots.map((slot) => (
+          <Link
+            key={slot.href}
+            href={slot.href}
+            className="slot"
+            aria-current={current(pathname, slot.href) ? "page" : undefined}
+          >
+            <span className="slot-icon">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={slot.icon} alt="" />
+            </span>
+            <span className="slot-label">{slot.label}</span>
           </Link>
-        </nav>
-        <nav className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-mist-muted lg:hidden">
-          <Link href="/spolocne">Spoločné</Link>
-          <Link href="/rebricek">Top</Link>
-          <Link href="/admin">Admin</Link>
-        </nav>
-      </div>
+        ))}
+      </nav>
     </header>
   );
 }

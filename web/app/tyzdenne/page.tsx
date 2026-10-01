@@ -43,7 +43,7 @@ export default async function TyzdennePage() {
           description="V admine alebo cez Supabase pridaj týždenné ciele."
         />
       ) : (
-        <div className="section-shell surface-strong rounded-xl px-6 md:px-8">
+        <div className="section-shell surface-strong px-6 md:px-8">
           {pool
             .slice()
             .sort((a, b) => (a.minChapter ?? 1) - (b.minChapter ?? 1))

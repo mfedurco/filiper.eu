@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSharedGoals } from "@/lib/data";
-import { EmptyState, ErrorState, PageHero } from "@/components/ui";
+import { EmptyState, ErrorState, PageHero, ProgressBar } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Spoločné ciele",
@@ -44,7 +44,7 @@ export default async function SpolocnePage() {
           {goals.map((goal) => {
             const pct = Math.min(100, Math.round((goal.progress / goal.amount) * 100));
             return (
-              <article key={goal.id} className="border-t border-[var(--line)] pt-6">
+              <article key={goal.id} className="surface-strong px-5 py-5">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lantern">
@@ -56,12 +56,7 @@ export default async function SpolocnePage() {
                   <p className="text-sm text-mist-muted">+{goal.points} bodov</p>
                 </div>
 
-                <div className="mt-5 h-2 overflow-hidden rounded-sm bg-[rgba(196,214,198,0.12)]">
-                  <div
-                    className="animate-progress h-full origin-left rounded-sm bg-gradient-to-r from-moss-500 to-lantern"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
+                <ProgressBar className="mt-5" value={pct} />
 
                 <div className="mt-6">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-mist-muted">

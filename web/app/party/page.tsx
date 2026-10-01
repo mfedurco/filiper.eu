@@ -43,7 +43,7 @@ export default async function PartyPage() {
           description="V admine pridaj party úlohy do data/quests/party.json."
         />
       ) : (
-        <div className="section-shell surface-strong rounded-[1.25rem] px-6 md:px-8">
+        <div className="section-shell surface-strong px-6 md:px-8">
           {pool
             .slice()
             .sort((a, b) => (a.minChapter ?? 1) - (b.minChapter ?? 1))

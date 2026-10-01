@@ -3,6 +3,16 @@ import { formatMaterial, formatTargets, questTypeLabel } from "@/lib/quest-label
 import { ProgressBar } from "@/components/ui";
 import { clampPercent } from "@/lib/utils";
 
+const TYPE_ICONS: Record<string, string> = {
+  BREAK_BLOCK: "/hlbina/icon-longterm.jpg",
+  PLACE_BLOCK: "/hlbina/icon-shared.jpg",
+  KILL_ENTITY: "/hlbina/icon-party.jpg",
+  CRAFT_ITEM: "/hlbina/icon-weekly.jpg",
+  SMELT_ITEM: "/hlbina/icon-daily.jpg",
+  PICKUP_ITEM: "/hlbina/icon-rewards.jpg",
+  ENTER_WORLD: "/hlbina/icon-campaign.jpg",
+};
+
 export function RewardList({ rewards }: { rewards?: RewardItem[] }) {
   if (!rewards?.length) {
     return <span className="text-ink-muted">Bez odmeny</span>;
@@ -12,7 +22,7 @@ export function RewardList({ rewards }: { rewards?: RewardItem[] }) {
       {rewards.map((reward) => (
         <li
           key={`${reward.material}-${reward.amount}`}
-          className="rounded-sm bg-[rgba(74,122,88,0.18)] px-3 py-1 text-xs font-medium text-moss-100"
+          className="chip"
         >
           {formatMaterial(reward.material)} ×{reward.amount}
         </li>
@@ -34,14 +44,21 @@ export function QuestRow({
     ? clampPercent(progress.current, progress.target)
     : null;
 
+  const icon = TYPE_ICONS[quest.type] ?? "/hlbina/icon-board.jpg";
+
   return (
-    <article className="border-b border-[var(--line)] py-5 last:border-b-0">
+    <article className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 border-t border-[var(--line)] py-4 first:border-t-0">
+      <span className="slot-icon">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={icon} alt="" />
+      </span>
+      <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="badge">{questTypeLabel(quest.type)}</span>
             {showMinChapter && quest.minChapter ? (
-              <span className="badge-ember badge">min. kap. {quest.minChapter}</span>
+              <span className="badge badge-ember">min. kap. {quest.minChapter}</span>
             ) : null}
             {progress?.completed ? (
               <span className="badge">Splnené</span>
@@ -54,8 +71,8 @@ export function QuestRow({
           </p>
         </div>
         <div className="text-right">
-          <p className="font-display text-2xl text-lantern">+{quest.points}</p>
-          <p className="text-xs uppercase tracking-wide text-mist-muted">bodov</p>
+          <p className="points-mark text-sm text-lantern">+{quest.points}</p>
+          <p className="text-xs text-mist-muted">bodov</p>
         </div>
       </div>
       {quest.rewards && quest.rewards.length > 0 ? (
@@ -74,6 +91,7 @@ export function QuestRow({
           <ProgressBar value={percent} />
         </div>
       ) : null}
+      </div>
     </article>
   );
 }
