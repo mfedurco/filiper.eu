@@ -10,7 +10,7 @@ export function GenerateForm({ servers }: { servers: { id: string; label: string
 
   return (
     <form
-      className="air-card"
+      className="air-card generate-card"
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);

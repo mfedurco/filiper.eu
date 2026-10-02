@@ -76,8 +76,8 @@ export default async function AdminPage({
     <div>
       <div className="admin-row" style={{ justifyContent: "space-between" }}>
         <p className="admin-lead">
-          Jedna výprava je mesačný balík úloh pre jeden server. Kópia na inom serveri žije
-          samostatne.
+          Tu sú servery. Pri každom je výprava, ktorá práve beží, jej dátumy a stav. Otvor server,
+          keď chceš vidieť návrhy aj staršie výpravy.
         </p>
         <form action={logoutAction}>
           <button className="admin-btn-quiet" type="submit">
@@ -87,34 +87,43 @@ export default async function AdminPage({
       </div>
 
       {failed ? (
-        <p className="admin-error">Zoznam výprav sa nepodarilo načítať.</p>
+        <p className="admin-error">Zoznam serverov sa nepodarilo načítať.</p>
       ) : (
         <>
-          <GenerateForm servers={servers.map((server) => ({ id: server.id, label: server.label }))} />
-          {servers.map((server) => (
-            <section key={server.id} className="server-block">
-              <h2>{server.label}</h2>
-              {server.expeditions.length === 0 ? (
-                <p className="muted">Tento server ešte nemá výpravu.</p>
-              ) : (
-                <div className="card-grid">
-                  {server.expeditions.map((expedition) => (
-                    <article key={expedition.id} className="air-card">
-                      <span className={`status status-${expedition.status}`}>
-                        {STATUS[expedition.status]}
-                      </span>
-                      <h3>{expedition.title}</h3>
-                      <p className="tiny">{formatSkRange(expedition.startsAt, expedition.endsAt)}</p>
-                      <p className="muted">{expedition.quests} úloh</p>
-                      <Link className="admin-btn" href={`/admin/vyprava/${expedition.id}`}>
-                        Otvoriť
+          {servers.length === 0 ? (
+            <p className="muted">Zatiaľ tu nie je žiadny server. Prvý vznikne s novým návrhom.</p>
+          ) : (
+            <div className="server-list">
+              {servers.map((server) => {
+                const active = server.expeditions.find((item) => item.status === "active");
+                return (
+                  <article key={server.id} className="air-card server-row">
+                    <div>
+                      <h2>{server.label}</h2>
+                      {active ? (
+                        <>
+                          <p className="server-active">{active.title}</p>
+                          <p className="tiny">{formatSkRange(active.startsAt, active.endsAt)}</p>
+                        </>
+                      ) : (
+                        <p className="muted">Žiadna aktívna výprava.</p>
+                      )}
+                      <p className="tiny">Výprav na serveri: {server.expeditions.length}</p>
+                    </div>
+                    <div className="admin-row">
+                      {active ? (
+                        <span className={`status status-${active.status}`}>{STATUS[active.status]}</span>
+                      ) : null}
+                      <Link className="admin-btn" href={`/admin/server/${server.id}`}>
+                        Otvoriť server
                       </Link>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-          ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          <GenerateForm servers={servers.map((server) => ({ id: server.id, label: server.label }))} />
         </>
       )}
     </div>

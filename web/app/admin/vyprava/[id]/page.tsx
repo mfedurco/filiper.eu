@@ -30,11 +30,11 @@ export default async function ExpeditionPage({
 
   return (
     <div>
-      <p>
-        <Link className="back-link" href="/admin">
-          Všetky servery
-        </Link>
-      </p>
+      <nav className="crumbs" aria-label="Cesta">
+        <Link href="/admin">Servery</Link>
+        <span aria-hidden="true">/</span>
+        <Link href={`/admin/server/${desk.serverId}`}>{desk.serverLabel}</Link>
+      </nav>
       <ExpeditionDesk desk={desk} notice={query.oznam} />
     </div>
   );

@@ -73,7 +73,8 @@ export function ExpeditionDesk({
 
       <section className="air-card">
         <span className={`status status-${desk.status}`}>{STATUS[desk.status]}</span>
-        <p className="tiny" style={{ marginTop: 8 }}>
+        <h2 className="page-title">{desk.title}</h2>
+        <p className="tiny">
           Server {desk.serverLabel} · {formatSkRange(desk.startsAt, desk.endsAt)}
         </p>
         <MetaForm
@@ -119,40 +120,38 @@ export function ExpeditionDesk({
 
       <CopyForm desk={desk} pending={pending} onCopy={(form) => run(copyDraftAction, form)} />
 
-      <div className="admin-tabs" role="tablist" aria-label="Skupiny úloh">
-        {GROUPS.map((item) => {
-          const count = desk.quests.filter((quest) => quest.kind === item.id).length;
-          const selected = item.id === group.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              id={`quest-tab-${item.id}`}
-              aria-selected={selected}
-              aria-controls="quest-panel"
-              className={selected ? "admin-tab is-active" : "admin-tab"}
-              onClick={() => {
-                setKind(item.id);
-                setEditing(null);
-              }}
-            >
-              {item.label}
-              <span className="admin-tab-count">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <div className="desk-panes">
+        <nav className="folder-tree" aria-label="Priečinky úloh">
+          <p className="folder-root">Úlohy</p>
+          <ul className="folder-list">
+            {GROUPS.map((item) => {
+              const count = desk.quests.filter((quest) => quest.kind === item.id).length;
+              const selected = item.id === group.id;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={selected ? "folder-item is-active" : "folder-item"}
+                    aria-current={selected ? "true" : undefined}
+                    onClick={() => {
+                      setKind(item.id);
+                      setEditing(null);
+                    }}
+                  >
+                    <span className="folder-mark" aria-hidden="true" />
+                    {item.label}
+                    <span className="folder-count">{count}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      <section
-        className="kind-block"
-        role="tabpanel"
-        id="quest-panel"
-        aria-labelledby={`quest-tab-${group.id}`}
-      >
+        <section className="quest-pane" aria-labelledby="quest-folder-title">
         <div className="kind-head">
           <div>
-            <h2>{group.label}</h2>
+            <h2 id="quest-folder-title">{group.label}</h2>
             <p className="tiny">{group.text}</p>
           </div>
           <button
@@ -203,7 +202,8 @@ export function ExpeditionDesk({
             )}
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
@@ -262,8 +262,8 @@ function CopyForm({
   const [serverId, setServerId] = useState(desk.serverId);
   const [custom, setCustom] = useState(false);
   return (
-    <section className="air-card" style={{ marginTop: 14 }}>
-      <h2 style={{ marginTop: 0 }}>Kopírovať ako nový návrh</h2>
+    <details className="air-card copy-details">
+      <summary>Kopírovať ako nový návrh</summary>
       <p className="tiny">
         Kópia dostane vlastné úlohy. Hráčsky postup sa neprenáša. Ak by sa termín prekrýval s
         bežiacou výpravou, dátumy ostanú prázdne.
@@ -312,7 +312,7 @@ function CopyForm({
           Vytvoriť kópiu
         </button>
       </form>
-    </section>
+    </details>
   );
 }
 

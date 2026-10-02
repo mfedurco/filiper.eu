@@ -83,7 +83,7 @@ The database schema is the plugin's (`expeditions`, `quest_definitions`, server 
 
 ### Admin
 
-`/admin` lists servers and expeditions (návrh / aktívna / skončená) with from–to dates. An expedition opens as quest cards grouped by kind. Drafts can be generated from `web/data/matrices/` or copied onto the same or another server. Only one expedition is active per server.
+`/admin` is a server list: each server shows its active expedition, dates, and status. Opening a server lists that server’s expeditions. An expedition opens as two panes: a folder tree (kampaň, denné, týždenné, dlhodobé, spoločné, party) and the quest cards for the selected folder. Drafts can be generated from `web/data/matrices/` or copied onto the same or another server. Only one expedition is active per server.
 
 ### Public routes
 

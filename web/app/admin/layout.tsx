@@ -13,8 +13,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="admin-root">
       <header className="admin-top">
         <div>
-          <p className="admin-kicker">Správa servera</p>
-          <h1>Výpravy</h1>
+          <p className="admin-kicker">Správa výprav</p>
+          <h1>
+            <Link href="/admin">Servery</Link>
+          </h1>
         </div>
         <Link className="back-link" href="/">
           Späť na portál
