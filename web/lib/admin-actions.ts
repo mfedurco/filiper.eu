@@ -10,7 +10,7 @@ import {
   secretMatches,
   sessionToken,
 } from "@/lib/admin-auth";
-import { hasDatabase, publicDbError } from "@/lib/db";
+import { dbQuery, hasDatabase, publicDbError } from "@/lib/db";
 import {
   copyExpedition,
   createGeneratedDraft,
@@ -21,8 +21,10 @@ import {
   startExpedition,
 } from "@/lib/admin-store";
 import { isServerId } from "@/lib/portal";
+import { ensureServerKeyColumn, generateServerKey, hashServerKey } from "@/lib/server-key";
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
+export type KeyResult = { ok: true; key: string } | { ok: false; message: string };
 
 function fail(error: unknown): ActionResult {
   if (error instanceof Error && error.message && !/select |insert |update |postgres/i.test(error.message)) {
@@ -155,6 +157,30 @@ export async function saveQuestAction(formData: FormData): Promise<ActionResult>
   } catch (error) {
     return fail(error);
   }
+}
+
+export async function rotateServerKeyAction(formData: FormData): Promise<KeyResult> {
+  const denied = await gate();
+  if (denied) return { ok: false, message: denied.message };
+  const serverId = String(formData.get("serverId") ?? "").trim();
+  if (!isServerId(serverId)) {
+    return { ok: false, message: "Server nie je platný." };
+  }
+  const key = generateServerKey();
+  const hash = hashServerKey(key);
+  try {
+    await ensureServerKeyColumn();
+    const rows = await dbQuery<{ id: string }>(
+      "update servers set key_hash = $2 where id = $1 returning id",
+      [serverId, hash],
+    );
+    if (rows.length === 0) return { ok: false, message: "Server sa nenašiel." };
+  } catch (error) {
+    const result = fail(error);
+    return { ok: false, message: result.ok ? "Kľúč sa nepodarilo uložiť." : result.message };
+  }
+  refresh();
+  return { ok: true, key };
 }
 
 export async function removeQuestAction(formData: FormData): Promise<ActionResult> {

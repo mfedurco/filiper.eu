@@ -3,6 +3,7 @@ import { dbQuery, publicDbError, withTx } from "@/lib/db";
 import { bratislavaSql } from "@/lib/dates";
 import { goalSentence, generateExpedition, materialLabel, slugify } from "@/lib/matrices";
 import { isServerId } from "@/lib/portal";
+import { ensureServerKeyColumn } from "@/lib/server-key";
 
 const KINDS = new Set(["kampan", "denne", "tyzdenne", "dlhodobe", "spolocne", "party"]);
 const TRACKING = new Set([
@@ -30,6 +31,7 @@ export type AdminExpeditionCard = {
 export type AdminServerCard = {
   id: string;
   label: string;
+  hasKey: boolean;
   expeditions: AdminExpeditionCard[];
 };
 
@@ -91,9 +93,11 @@ function statusOf(value: string): AdminExpeditionCard["status"] {
 }
 
 export async function listAdminOverview(): Promise<AdminServerCard[]> {
+  await ensureServerKeyColumn();
   const rows = await dbQuery<{
     server_id: string;
     label: string;
+    has_key: boolean;
     expedition_id: string | null;
     title: string | null;
     description: string | null;
@@ -102,7 +106,7 @@ export async function listAdminOverview(): Promise<AdminServerCard[]> {
     ends_at: string | null;
     quests: number | null;
   }>(
-    `select s.id as server_id, s.label,
+    `select s.id as server_id, s.label, (s.key_hash is not null) as has_key,
             e.id::text as expedition_id, e.title, e.description, e.status::text as status,
             e.starts_at, e.ends_at,
             (select count(*)::int from quest_definitions q where q.expedition_id = e.id) as quests
@@ -114,7 +118,7 @@ export async function listAdminOverview(): Promise<AdminServerCard[]> {
   for (const row of rows) {
     let server = servers.get(row.server_id);
     if (!server) {
-      server = { id: row.server_id, label: row.label, expeditions: [] };
+      server = { id: row.server_id, label: row.label, hasKey: Boolean(row.has_key), expeditions: [] };
       servers.set(row.server_id, server);
     }
     if (!row.expedition_id || !row.status || !row.title) continue;

@@ -421,6 +421,11 @@ body:has(.admin-root) {
   resize: vertical;
 }
 
+.key-once {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.92rem;
+}
+
 .split {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

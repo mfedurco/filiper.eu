@@ -109,6 +109,7 @@ export default async function AdminPage({
                         <p className="muted">Žiadna aktívna výprava.</p>
                       )}
                       <p className="tiny">Výprav na serveri: {server.expeditions.length}</p>
+                      <p className="tiny">{server.hasKey ? "Kľúč je nastavený." : "Bez kľúča."}</p>
                     </div>
                     <div className="admin-row">
                       {active ? (

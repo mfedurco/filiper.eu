@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { GenerateForm } from "@/components/admin/generate-form";
+import { ServerKeyForm } from "@/components/admin/server-key-form";
 import { adminConfigured, isAdminAuthed } from "@/lib/admin-auth";
 import { listAdminOverview } from "@/lib/admin-store";
 import { hasDatabase } from "@/lib/db";
@@ -53,6 +54,7 @@ export default async function ServerAdminPage({
       </nav>
 
       <h2 className="page-title">{server.label}</h2>
+      <ServerKeyForm serverId={server.id} hasKey={server.hasKey} />
       <p className="admin-lead">
         Výpravy tohto servera. Beží naraz len jedna. Návrh spustíš až vnútri výpravy, keď jej
         dátum od už nastal.
