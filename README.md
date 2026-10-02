@@ -40,6 +40,8 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 ### Commands
 
 ```
+/vyprava
+/vyprava truhla
 /vyprava kampan
 /vyprava denne
 /vyprava tyzdenne

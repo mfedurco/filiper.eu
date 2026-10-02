@@ -52,6 +52,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
     private ProgressOutbox outbox;
     private volatile DatabaseClient database;
     private volatile String activeExpeditionId;
+    private volatile ExpeditionRecord activeExpedition;
     private volatile Map<String, GoalMeta> goalCatalog = Map.of();
     private final AtomicBoolean flushing = new AtomicBoolean();
     private boolean timersStarted;
@@ -81,6 +82,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         quests.setSync(this);
 
         getServer().getPluginManager().registerEvents(new QuestListener(this), this);
+        getServer().getPluginManager().registerEvents(new sk.vyprava.menu.VypravaChestMenu(this), this);
         VypravaCommand command = new VypravaCommand(this);
         PluginCommand cmd = getCommand("vyprava");
         if (cmd != null) {
@@ -142,6 +144,10 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
 
     public String prefix() {
         return prefix;
+    }
+
+    public ExpeditionRecord activeExpedition() {
+        return activeExpedition;
     }
 
     @Override
@@ -216,6 +222,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
                     registry.clear();
                     goalCatalog = Map.of();
                     activeExpeditionId = null;
+                    activeExpedition = null;
                     warnDb("server-id is blank. Database writes are refused and this server expedition is not loaded.");
                 }, after);
                 return;
@@ -250,6 +257,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             registry.clear();
             goalCatalog = Map.of();
             activeExpeditionId = null;
+            activeExpedition = null;
             if (!loggedInactive) {
                 getLogger().warning("No expedition is active. Quests are not tracked.");
                 loggedInactive = true;
@@ -267,6 +275,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             changed = true;
         }
         activeExpeditionId = newId;
+        activeExpedition = expedition;
         writeLastExpedition(newId);
         if (!newId.equals(replayedFor)) {
             replay(newId);

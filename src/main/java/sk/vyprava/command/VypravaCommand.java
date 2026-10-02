@@ -39,11 +39,15 @@ public final class VypravaCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sendHelp(sender);
+            openChest(sender);
             return true;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
         return switch (sub) {
+            case "truhla", "chest", "menu" -> {
+                openChest(sender);
+                yield true;
+            }
             case "help" -> {
                 sendHelp(sender);
                 yield true;
@@ -164,6 +168,14 @@ public final class VypravaCommand implements CommandExecutor, TabCompleter {
             default -> player.sendMessage("party create|invite|leave|quest");
         }
         return true;
+    }
+
+    private void openChest(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Len pre hráčov.");
+            return;
+        }
+        new sk.vyprava.menu.VypravaChestMenu(plugin).open(player);
     }
 
     private void showCampaign(Player player) {
@@ -325,7 +337,9 @@ public final class VypravaCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(mini.deserialize(plugin.prefix() + "<white>/vyprava kampan</white> <gray>— postup kampane</gray>"));
+        sender.sendMessage(mini.deserialize(plugin.prefix() + "<white>/vyprava</white> <gray>— truhla s výpravou</gray>"));
+        sender.sendMessage("<white>/vyprava truhla</white> <gray>— tá istá truhla</gray>");
+        sender.sendMessage("<white>/vyprava kampan</white> <gray>— postup kampane</gray>");
         sender.sendMessage("<white>/vyprava denne</white> <gray>— denné úlohy</gray>");
         sender.sendMessage("<white>/vyprava tyzdenne</white> <gray>— týždenné úlohy</gray>");
         sender.sendMessage("<white>/vyprava dlhodobe</white> <gray>— dlhodobé / sezónne ciele</gray>");
@@ -341,7 +355,7 @@ public final class VypravaCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             return filter(List.of(
-                    "kampan", "denne", "tyzdenne", "dlhodobe", "spolocne",
+                    "truhla", "kampan", "denne", "tyzdenne", "dlhodobe", "spolocne",
                     "questy", "party", "top", "help", "reload"
             ), args[0]);
         }

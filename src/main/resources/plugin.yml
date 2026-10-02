@@ -7,7 +7,7 @@ description: Denné, týždenné, dlhodobé a spoločné ciele + kampaň pre sur
 commands:
   vyprava:
     description: Hlavný príkaz pluginu Výprava
-    usage: /vyprava <kampan|denne|tyzdenne|dlhodobe|spolocne|party|top|help>
+    usage: /vyprava [truhla|kampan|denne|tyzdenne|dlhodobe|spolocne|party|top|help]
     aliases: [vp, questy, quest]
 permissions:
   vyprava.use:
