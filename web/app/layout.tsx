@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { Nunito, Pixelify_Sans } from "next/font/google";
 import "./globals.css";
 
 const nunito = Nunito({
   subsets: ["latin", "latin-ext"],
   variable: "--font-nunito",
+  display: "swap",
+});
+
+const pixel = Pixelify_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "600", "700"],
+  variable: "--font-pixel",
   display: "swap",
 });
 
@@ -25,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="sk"
-      className={`${nunito.variable} h-full`}
+      className={`${nunito.variable} ${pixel.variable} h-full`}
     >
       <body className="min-h-full">{children}</body>
     </html>

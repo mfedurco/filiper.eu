@@ -55,7 +55,7 @@
   --color-mist: var(--mist);
   --color-mist-muted: var(--mist-muted);
   --color-ink: var(--ink);
-  --font-display: var(--font-nunito);
+  --font-display: var(--font-pixel);
   --font-sans: var(--font-nunito);
 }
 
@@ -107,21 +107,22 @@ code {
   padding: 0 4px;
 }
 
+.font-display,
+.kicker,
+.slot-label {
+  font-family: var(--font-pixel), var(--font-nunito), "Segoe UI", sans-serif;
+}
+
 .font-display {
-  font-family: var(--font-nunito), "Segoe UI", sans-serif;
   font-weight: 400;
   letter-spacing: 0.01em;
   line-height: 1.15;
 }
 
 .pixel,
-.kicker,
 .badge,
 .btn-primary,
 .btn-secondary,
-.slot-label,
-.brand-mark,
-.brand small,
 .points-mark {
   font-family: var(--font-nunito), "Segoe UI", sans-serif;
 }
@@ -148,40 +149,77 @@ code {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px 16px;
-  padding: 12px 16px 0;
-  background: var(--hud);
-  color: var(--hud-ink);
-  border-bottom: 4px solid var(--edge);
+  gap: 1rem 1.5rem;
+  min-height: 76px;
+  padding: 0.8rem 1.25rem;
+  background: rgba(18, 26, 23, 0.88);
+  color: #f3f7f4;
+  border-bottom: 1px solid rgba(215, 235, 225, 0.12);
   position: sticky;
   top: 0;
   z-index: 40;
 }
 
 .brand {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: inherit;
-  padding-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #f3f7f4;
+  font-family: var(--font-nunito), "Segoe UI", sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .brand-mark {
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--lantern);
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: block;
 }
 
-.brand small {
-  font-size: 12px;
+.brand b {
+  font-weight: 800;
+}
+
+.brand-word span {
   color: #a9bdb3;
+  font-weight: 600;
 }
 
-.hud-links {
+.hud-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-bottom: 12px;
+  gap: 0.15rem;
+  align-items: center;
+}
+
+.hud-nav a,
+.hud-nav select {
+  color: #d5e4dc;
+  font-family: var(--font-nunito), "Segoe UI", sans-serif;
+  font-size: 0.97rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+}
+
+.hud-nav a:hover,
+.hud-nav select:hover {
+  background: rgba(47, 107, 74, 0.35);
+}
+
+.hud-nav a[aria-current="page"] {
+  color: #f4fbf7;
+  background: #2f6b4a;
+}
+
+.hud-nav option {
+  color: #14201b;
+  background: #e7eee9;
 }
 
 .chip {
@@ -469,8 +507,8 @@ table {
   border-collapse: collapse;
 }
 
-thead {
-  font-family: var(--font-nunito), "Segoe UI", sans-serif;
+.board thead {
+  font-family: var(--font-pixel), var(--font-nunito), "Segoe UI", sans-serif;
   font-size: 12px;
   color: var(--lantern);
   background: #1e2c26;

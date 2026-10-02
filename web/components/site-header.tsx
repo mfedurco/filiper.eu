@@ -4,27 +4,28 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const slots = [
-  { href: "/kampan", label: "Kampaň", icon: "/hlbina/icon-campaign.jpg" },
-  { href: "/denne", label: "Denné", icon: "/hlbina/icon-daily.jpg" },
-  { href: "/tyzdenne", label: "Týždenné", icon: "/hlbina/icon-weekly.jpg" },
-  { href: "/dlhodobe", label: "Dlhodobé", icon: "/hlbina/icon-longterm.jpg" },
-  { href: "/spolocne", label: "Spoločné", icon: "/hlbina/icon-shared.jpg" },
-  { href: "/party", label: "Party", icon: "/hlbina/icon-party.jpg" },
-  { href: "/rebricek", label: "Rebríček", icon: "/hlbina/icon-board.jpg" },
+  { href: "/", label: "Výprava" },
+  { href: "/kampan", label: "Kampaň" },
+  { href: "/denne", label: "Denné" },
+  { href: "/tyzdenne", label: "Týždenné" },
+  { href: "/dlhodobe", label: "Dlhodobé" },
+  { href: "/spolocne", label: "Spoločné" },
+  { href: "/party", label: "Party" },
+  { href: "/rebricek", label: "Rebríček" },
+  { href: "/hrac", label: "Hráč" },
 ];
 
 function current(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function SiteHeader({
   servers,
   serverId,
-  note,
 }: {
   servers: { id: string; label: string }[];
   serverId: string;
-  note: string;
 }) {
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
@@ -45,50 +46,42 @@ export function SiteHeader({
 
   return (
     <header className="hud">
-      <Link href={hrefFor("/")} className="brand">
-        <span className="brand-mark">Výprava</span>
-        <small>{note}</small>
-      </Link>
-      <nav className="hud-links" aria-label="Hráč a admin">
+      <a className="brand" href="https://filiper.eu">
+        <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#2f6b4a" />
+          <path fill="#f4fbf7" d="M8.5 6.5h16v6.2h-9.2v2.4h7.4v5.2h-7.4V25.5h-6.8V6.5z" />
+        </svg>
+        <span className="brand-word">
+          <b>filiper</b>
+          <span>.eu</span>
+        </span>
+      </a>
+      <nav className="hud-nav" aria-label="Výprava">
         {servers.length > 1 ? (
-          <label className="chip">
-            Server
-            <select
-              aria-label="Server"
-              value={servers.some((server) => server.id === serverId) ? serverId : servers[0]?.id}
-              onChange={(event) => onServer(event.target.value)}
-              style={{ background: "transparent", color: "inherit", border: 0, font: "inherit" }}
-            >
-              {servers.map((server) => (
-                <option key={server.id} value={server.id}>
-                  {server.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <select
+            aria-label="Server"
+            value={servers.some((server) => server.id === serverId) ? serverId : servers[0]?.id}
+            onChange={(event) => onServer(event.target.value)}
+          >
+            {servers.map((server) => (
+              <option key={server.id} value={server.id}>
+                {server.label}
+              </option>
+            ))}
+          </select>
         ) : null}
-        <Link href={hrefFor("/hrac")} className="chip" aria-current={current(pathname, "/hrac") ? "page" : undefined}>
-          Hráč
-        </Link>
-        <Link href="/admin" className="chip" aria-current={current(pathname, "/admin") ? "page" : undefined}>
-          Admin
-        </Link>
-      </nav>
-      <nav className="hotbar" aria-label="Typy cieľov">
         {slots.map((slot) => (
           <Link
             key={slot.href}
             href={hrefFor(slot.href)}
-            className="slot"
             aria-current={current(pathname, slot.href) ? "page" : undefined}
           >
-            <span className="slot-icon">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={slot.icon} alt="" />
-            </span>
-            <span className="slot-label">{slot.label}</span>
+            {slot.label}
           </Link>
         ))}
+        <Link href="/admin" aria-current={current(pathname, "/admin") ? "page" : undefined}>
+          Admin
+        </Link>
       </nav>
     </header>
   );
