@@ -31,3 +31,5 @@ Nový návrh sa skladá z matríc v `data/matrices/` (témy, činnosti, materiá
 ## Verejné stránky
 
 `/`, `/kampan`, `/denne`, `/tyzdenne`, `/dlhodobe`, `/spolocne`, `/party`, `/rebricek`, `/hrac`
+
+`GET /api/public/{serverId}` vráti len aktívnu výpravu a rebríček toho servera: názov, text, mená úloh, hráč a body. Žiadne admin údaje. Prázdna výprava alebo rebríček sú prázdne polia, nie chyba. Prehliadač z `https://filiper.eu` a `https://www.filiper.eu` môže čítať túto adresu.

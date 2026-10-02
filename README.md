@@ -89,6 +89,8 @@ The database schema is the plugin's (`expeditions`, `quest_definitions`, server 
 
 `/`, `/kampan`, `/denne`, `/tyzdenne`, `/dlhodobe`, `/spolocne`, `/party`, `/rebricek`, `/hrac`, `/admin`
 
+`GET /api/public/{serverId}` is a read-only JSON snapshot of that server’s active expedition (name, blurb, quest names) and leaderboard (player, points). It does not return admin data. Missing data is an empty expedition or leaderboard, not an error. CORS allows `https://filiper.eu` and `https://www.filiper.eu`.
+
 ### Deploy on Vercel + Cloudflare (`filiper.eu`)
 
 1. Import the repo in Vercel; **Root Directory** = `web`.
