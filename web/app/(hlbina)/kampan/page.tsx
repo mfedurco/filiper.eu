@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getCampaign } from "@/lib/data";
-import { EmptyState, ErrorState, PageHero } from "@/components/ui";
+import { PortalGap } from "@/components/portal-gap";
+import { ErrorState, PageHero } from "@/components/ui";
 import { QuestRow, RewardList } from "@/components/quest-row";
 
 export const metadata: Metadata = {
@@ -30,9 +31,9 @@ export default async function KampanPage() {
     return (
       <main className="pb-16 pt-8">
         <PageHero title="Kampaň" description="Zatiaľ tu nie sú žiadne kapitoly." />
-        <EmptyState
+        <PortalGap
           title="Prázdna kampaň"
-          description="V admine pridaj kapitoly a ulož ich do data/quests/campaign.json."
+          description="Aktívna výprava nemá kapitoly."
         />
       </main>
     );

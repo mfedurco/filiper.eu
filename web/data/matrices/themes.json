@@ -1,0 +1,10 @@
+[
+  { "id": "les", "label": "nočný les", "place": "v lese za školou", "mood": "tichý" },
+  { "id": "bana", "label": "hlboká baňa", "place": "v bani pod spawnom", "mood": "prašný" },
+  { "id": "dvor", "label": "školský dvor", "place": "na školskom dvore", "mood": "hlučný" },
+  { "id": "nether", "label": "nether brána", "place": "pri Nether portáli", "mood": "horúci" },
+  { "id": "dedina", "label": "dedinský trh", "place": "na dedinskom trhu", "mood": "zvedavý" },
+  { "id": "end", "label": "endový ostrov", "place": "na ostrove v Ende", "mood": "prázdny" },
+  { "id": "rieka", "label": "riečny breh", "place": "pri riečnom brehu", "mood": "mokrý" },
+  { "id": "farma", "label": "školská farma", "place": "na školskej farme", "mood": "hladný" }
+]

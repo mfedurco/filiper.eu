@@ -1,0 +1,12 @@
+{
+  "patterns": [
+    "{mood} {role}",
+    "Operácia {material}",
+    "Kto prinesie {material}?",
+    "{role} {place}",
+    "Veľký plán: {material}",
+    "Tichá dohoda o {material}",
+    "Školský výpad za {material}",
+    "{material} nemá šancu"
+  ]
+}

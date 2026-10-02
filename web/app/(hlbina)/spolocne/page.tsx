@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSharedGoals } from "@/lib/data";
-import { EmptyState, ErrorState, PageHero, ProgressBar } from "@/components/ui";
+import { PortalGap } from "@/components/portal-gap";
+import { ErrorState, PageHero, ProgressBar } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Spoločné ciele",
@@ -35,9 +36,9 @@ export default async function SpolocnePage() {
       </PageHero>
 
       {!goals.length ? (
-        <EmptyState
+        <PortalGap
           title="Žiadne aktívne spoločné ciele"
-          description="Plugin rotuje spoločné ciele každý týždeň."
+          description="Aktívna výprava nemá spoločný cieľ."
         />
       ) : (
         <div className="section-shell space-y-10">

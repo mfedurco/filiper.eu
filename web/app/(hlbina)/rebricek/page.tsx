@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeaderboard } from "@/lib/data";
-import { EmptyState, ErrorState, PageHero } from "@/components/ui";
+import { PortalGap } from "@/components/portal-gap";
+import { ErrorState, PageHero } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Rebríček",
@@ -29,17 +30,17 @@ export default async function RebricekPage() {
       <PageHero
         eyebrow="Kto vedie Výpravu?"
         title="Rebríček"
-        description="Celkové a týždenné body z kampane, denných, týždenných, dlhodobých a spoločných cieľov. Demo seed funguje bez Minecraft servera; produkcia ide cez Supabase alebo /api/sync."
+        description="Celkové a týždenné body z kampane, denných, týždenných, dlhodobých a spoločných cieľov aktívnej výpravy."
       >
         <Link href="/hrac" className="btn-secondary">
-          Ukážkový hráč
+          Hráči
         </Link>
       </PageHero>
 
       {!sorted.length ? (
-        <EmptyState
+        <PortalGap
           title="Rebríček je prázdny"
-          description="Zatiaľ tu nie sú žiadni hráči."
+          description="Na tomto serveri zatiaľ nie sú hráči."
         />
       ) : (
         <div className="section-shell surface-strong overflow-x-auto">

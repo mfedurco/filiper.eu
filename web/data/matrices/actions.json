@@ -1,0 +1,9 @@
+[
+  { "tracking": "break_block", "verb": "Vylám", "role": "baník" },
+  { "tracking": "place_block", "verb": "Polož", "role": "staviteľ" },
+  { "tracking": "kill", "verb": "Poraz", "role": "hliadka" },
+  { "tracking": "craft", "verb": "Vyrob", "role": "remeselník" },
+  { "tracking": "smelt", "verb": "Vytav", "role": "kuchár" },
+  { "tracking": "pickup", "verb": "Pozbieraj", "role": "zberač" },
+  { "tracking": "enter_world", "verb": "Navštív", "role": "prieskumník" }
+]

@@ -1,43 +1,33 @@
-# Výprava Web
+# Výprava web
 
-Next.js App Router + TypeScript + Tailwind + **Supabase** dashboard for the Výprava Paper plugin.
+Next.js portál pre hráčov (vzhľad Hlbina) a svetlý admin výprav. Verejné stránky čítajú živých hráčov, postup a aktívnu výpravu z Neon Postgres. Schéma tabuliek je tá z pluginu (`expeditions`, `quest_definitions`, `servers` a súvisiace tabuľky). Web si nevymýšľa druhú schému a migrácie nespúšťa.
 
-## Run locally
+Predvolený server-id je `test`. Ak je serverov viac, v hlavičke je prepínač.
+
+## Spustenie
 
 ```bash
-cp .env.example .env.local
+cd web
 npm install
 npm run dev
-# → http://localhost:43127
+# http://127.0.0.1:43141
 ```
 
-Demo JSON under `data/` powers the UI when Supabase is not configured.
+## Premenné
 
-## Env
+| Premenná | Účel |
+|----------|------|
+| `DATABASE_URL` | Pooled Neon connection string pre serverové čítanie a zápis. Nikdy do klienta. |
+| `ADMIN_SECRET` | Spoločné heslo pre `/admin`. Ak chýba, admin je zamknutý a nezapisuje. |
 
-| Variable | Purpose |
-|----------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (RLS read) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sync + admin writes |
-| `VYPRVA_ADMIN_PASSWORD` | `/admin` cookie secret |
-| `VYPRVA_PLUGIN_API_URL` | Paper plugin base (`http://host:8765`) |
-| `VYPRVA_PLUGIN_API_TOKEN` | Optional `X-Vyprava-Token` |
+Hodnoty patria do `.env.local`, nie do gitu. Ak `DATABASE_URL` na nasadení chýba, verejné stránky ostanú v prázdnom stave a nespadnú.
 
-## Supabase
+## Admin
 
-```bash
-# In Supabase SQL editor:
-# 1) supabase/migrations/001_init.sql
-# 2) supabase/seed.sql
-```
+`/admin` je svetlý a bez Minecraft vzhľadu. Po prihlásení vidno servery a ich výpravy (návrh / aktívna / skončená) s dátumom od–do. Výprava sa otvorí ako karty podľa druhu: kampaň, denné, týždenné, dlhodobé, spoločné, party. Karty sa dajú pridať, upraviť a odstrániť.
 
-Tables: `players`, `goals`, `milestones`, `player_progress`, `contributions`, `shared_goal_state`, `leaderboard_snapshot`, `admin_settings`.
+Nový návrh sa skladá z matríc v `data/matrices/` (témy, činnosti, materiály, vzory mien). Kópia výpravy je nový návrh na tom istom alebo inom serveri. Na jednom serveri beží naraz jedna výprava. Spustenie rešpektuje `starts_at` / `ends_at`.
 
-## Vercel + Cloudflare
+## Verejné stránky
 
-- Vercel root directory: `web`
-- Cloudflare DNS: CNAME `vyprava` → `cname.vercel-dns.com` for **filiper.eu**
-- Add domain in Vercel project settings
-
-See root [README](../README.md) for full deploy steps.
+`/`, `/kampan`, `/denne`, `/tyzdenne`, `/dlhodobe`, `/spolocne`, `/party`, `/rebricek`, `/hrac`

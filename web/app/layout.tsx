@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Jersey_10, Nunito, Press_Start_2P, Silkscreen } from "next/font/google";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 const jersey = Jersey_10({
@@ -37,7 +35,7 @@ export const metadata: Metadata = {
     template: "%s · Výprava",
   },
   description:
-    "Výprava – denné, týždenné, dlhodobé a spoločné survival ciele pre Paper server. Web na Supabase + Vercel.",
+    "Výprava – denné, týždenné, dlhodobé a spoločné survival ciele pre Paper server.",
 };
 
 export default function RootLayout({
@@ -50,11 +48,7 @@ export default function RootLayout({
       lang="sk"
       className={`${jersey.variable} ${silk.variable} ${press.variable} ${nunito.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col">
-        <SiteHeader />
-        <div className="board flex-1">{children}</div>
-        <SiteFooter />
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

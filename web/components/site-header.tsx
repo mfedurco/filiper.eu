@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const slots = [
   { href: "/kampan", label: "Kampaň", icon: "/hlbina/icon-campaign.jpg" },
@@ -17,17 +17,57 @@ function current(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteHeader() {
+export function SiteHeader({
+  servers,
+  serverId,
+  note,
+}: {
+  servers: { id: string; label: string }[];
+  serverId: string;
+  note: string;
+}) {
   const pathname = usePathname() ?? "/";
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  function hrefFor(path: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    const query = params.toString();
+    return query ? `${path}?${query}` : path;
+  }
+
+  function onServer(next: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("server", next);
+    params.delete("hrac");
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   return (
     <header className="hud">
-      <Link href="/" className="brand">
+      <Link href={hrefFor("/")} className="brand">
         <span className="brand-mark">Výprava</span>
-        <small>triedny survival · domáci server</small>
+        <small>{note}</small>
       </Link>
       <nav className="hud-links" aria-label="Hráč a admin">
-        <Link href="/hrac" className="chip" aria-current={current(pathname, "/hrac") ? "page" : undefined}>
+        {servers.length > 1 ? (
+          <label className="chip">
+            Server
+            <select
+              aria-label="Server"
+              value={servers.some((server) => server.id === serverId) ? serverId : servers[0]?.id}
+              onChange={(event) => onServer(event.target.value)}
+              style={{ background: "transparent", color: "inherit", border: 0, font: "inherit" }}
+            >
+              {servers.map((server) => (
+                <option key={server.id} value={server.id}>
+                  {server.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <Link href={hrefFor("/hrac")} className="chip" aria-current={current(pathname, "/hrac") ? "page" : undefined}>
           Hráč
         </Link>
         <Link href="/admin" className="chip" aria-current={current(pathname, "/admin") ? "page" : undefined}>
@@ -38,7 +78,7 @@ export function SiteHeader() {
         {slots.map((slot) => (
           <Link
             key={slot.href}
-            href={slot.href}
+            href={hrefFor(slot.href)}
             className="slot"
             aria-current={current(pathname, slot.href) ? "page" : undefined}
           >

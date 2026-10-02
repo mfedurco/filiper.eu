@@ -7,7 +7,10 @@ import { createServiceSupabase } from "@/lib/supabase";
  * or Authorization: Bearer <SUPABASE_SERVICE_ROLE not required; uses admin password>.
  */
 export async function POST(request: NextRequest) {
-  const admin = process.env.VYPRVA_ADMIN_PASSWORD?.trim() || "vyprava";
+  const admin = process.env.ADMIN_SECRET?.trim() || process.env.VYPRVA_ADMIN_PASSWORD?.trim();
+  if (!admin) {
+    return NextResponse.json({ error: "Admin je zamknutý." }, { status: 423 });
+  }
   const header =
     request.headers.get("x-vyprava-admin") ||
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");

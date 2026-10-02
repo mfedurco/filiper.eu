@@ -1,65 +1,122 @@
-import { cookies } from "next/headers";
-import type { Metadata } from "next";
-import { AdminApp } from "@/components/admin-app";
-import {
-  getAdminPassword,
-  getAdminSettings,
-  getCampaign,
-  getDailyPool,
-  getPartyPool,
-} from "@/lib/data";
-import { COOKIE } from "@/lib/admin-auth";
-import type {
-  AdminSettings,
-  Campaign,
-  QuestPool,
-} from "@/lib/types";
-
-export const metadata: Metadata = {
-  title: "Admin",
-};
+import { loginAction, logoutAction } from "@/lib/admin-actions";
+import { adminConfigured, isAdminAuthed } from "@/lib/admin-auth";
+import { listAdminOverview } from "@/lib/admin-store";
+import { hasDatabase } from "@/lib/db";
+import { formatSkRange } from "@/lib/dates";
+import { GenerateForm } from "@/components/admin/generate-form";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-type Bundle = {
-  campaign: Campaign;
-  daily: QuestPool;
-  party: QuestPool;
-  settings: AdminSettings;
+const STATUS: Record<string, string> = {
+  draft: "návrh",
+  active: "aktívna",
+  ended: "skončená",
 };
 
-export default async function AdminPage() {
-  const jar = await cookies();
-  const authed = jar.get(COOKIE)?.value === getAdminPassword();
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ chyba?: string }>;
+}) {
+  const params = await searchParams;
+  if (!adminConfigured()) {
+    return (
+      <section className="air-card login-card">
+        <h2>Admin je zamknutý</h2>
+        <p className="muted">
+          Na serveri chýba ADMIN_SECRET. Kým ho nedoplníš, táto stránka nič nezapisuje.
+        </p>
+      </section>
+    );
+  }
 
-  let bundle: Bundle | null = null;
-  let error: string | null = null;
+  if (!(await isAdminAuthed())) {
+    return (
+      <form className="air-card login-card" action={loginAction}>
+        <h2>Odomknúť admin</h2>
+        <p className="muted">Spoločné heslo pre študenta, ktorý spravuje server.</p>
+        <label className="admin-field">
+          <span>Heslo</span>
+          <input name="password" type="password" autoComplete="current-password" required />
+        </label>
+        {params.chyba ? <p className="admin-error">Heslo nesedí.</p> : null}
+        <button className="admin-btn" type="submit">
+          Vstúpiť
+        </button>
+      </form>
+    );
+  }
 
-  if (authed) {
-    const results = await Promise.allSettled([
-      getCampaign(),
-      getDailyPool(),
-      getPartyPool(),
-      getAdminSettings(),
-    ]);
+  if (!hasDatabase()) {
+    return (
+      <section className="air-card">
+        <h2>Databáza nie je pripojená</h2>
+        <p className="muted">
+          Bez DATABASE_URL admin nič nezapíše. Verejné stránky ostanú prázdne.
+        </p>
+        <form action={logoutAction}>
+          <button className="admin-btn-quiet" type="submit">
+            Odhlásiť
+          </button>
+        </form>
+      </section>
+    );
+  }
 
-    if (results.every((r) => r.status === "fulfilled")) {
-      const [campaign, daily, party, settings] = results.map(
-        (r) => (r as PromiseFulfilledResult<unknown>).value,
-      ) as [Campaign, QuestPool, QuestPool, AdminSettings];
-      bundle = { campaign, daily, party, settings };
-    } else {
-      error = "Nepodarilo sa načítať admin dáta.";
-    }
+  let servers: Awaited<ReturnType<typeof listAdminOverview>> = [];
+  let failed = false;
+  try {
+    servers = await listAdminOverview();
+  } catch {
+    failed = true;
   }
 
   return (
-    <main>
-      <AdminApp
-        initialAuthed={authed}
-        initialBundle={bundle}
-        initialError={error}
-      />
-    </main>
+    <div>
+      <div className="admin-row" style={{ justifyContent: "space-between" }}>
+        <p className="admin-lead">
+          Jedna výprava je mesačný balík úloh pre jeden server. Kópia na inom serveri žije
+          samostatne.
+        </p>
+        <form action={logoutAction}>
+          <button className="admin-btn-quiet" type="submit">
+            Odhlásiť
+          </button>
+        </form>
+      </div>
+
+      {failed ? (
+        <p className="admin-error">Zoznam výprav sa nepodarilo načítať.</p>
+      ) : (
+        <>
+          <GenerateForm servers={servers.map((server) => ({ id: server.id, label: server.label }))} />
+          {servers.map((server) => (
+            <section key={server.id} className="server-block">
+              <h2>{server.label}</h2>
+              {server.expeditions.length === 0 ? (
+                <p className="muted">Tento server ešte nemá výpravu.</p>
+              ) : (
+                <div className="card-grid">
+                  {server.expeditions.map((expedition) => (
+                    <article key={expedition.id} className="air-card">
+                      <span className={`status status-${expedition.status}`}>
+                        {STATUS[expedition.status]}
+                      </span>
+                      <h3>{expedition.title}</h3>
+                      <p className="tiny">{formatSkRange(expedition.startsAt, expedition.endsAt)}</p>
+                      <p className="muted">{expedition.quests} úloh</p>
+                      <Link className="admin-btn" href={`/admin/vyprava/${expedition.id}`}>
+                        Otvoriť
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+        </>
+      )}
+    </div>
   );
 }

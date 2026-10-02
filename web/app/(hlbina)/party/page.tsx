@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPartyPool } from "@/lib/data";
-import { EmptyState, ErrorState, PageHero } from "@/components/ui";
+import { PortalGap } from "@/components/portal-gap";
+import { ErrorState, PageHero } from "@/components/ui";
 import { QuestRow } from "@/components/quest-row";
 
 export const metadata: Metadata = {
@@ -38,9 +39,9 @@ export default async function PartyPage() {
       </PageHero>
 
       {!pool.length ? (
-        <EmptyState
+        <PortalGap
           title="Party pool je prázdny"
-          description="V admine pridaj party úlohy do data/quests/party.json."
+          description="Aktívna výprava nemá party úlohy."
         />
       ) : (
         <div className="section-shell surface-strong px-6 md:px-8">

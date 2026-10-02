@@ -59,39 +59,31 @@ Enabled by default on port **8765**:
 
 CORS is open for the dashboard. Optional `web.api-token` → clients send `X-Vyprava-Token`.
 
-## Web (Next.js + Supabase + Vercel)
+## Web (Next.js + Neon)
 
-Source: [`web/`](web/).
+Source: [`web/`](web/). Public pages stay on the Hlbina look and read the live expedition from Neon. `/admin` is a separate light screen.
 
 ### Local
 
 ```bash
 cd web
-cp .env.example .env.local   # optional Supabase; demo JSON works without it
+cp .env.example .env.local
 npm install
-npm run dev                  # http://localhost:43127
+npm run dev                  # http://127.0.0.1:43141
 ```
 
-Without Supabase env vars the UI loads **demo seed** from `web/data/` (including shared contributions).
+### Env
 
-### Supabase
+Set in `.env.local` or the host, never commit the values:
 
-1. Create a project.
-2. Run `web/supabase/migrations/001_init.sql` then `web/supabase/seed.sql`.
-3. Set in Vercel / `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (sync + admin settings write)
-   - `VYPRVA_ADMIN_PASSWORD`
-   - optional `VYPRVA_PLUGIN_API_URL` (+ token)
+- `DATABASE_URL` — pooled Neon connection for the Next.js server. If it is missing, public pages stay empty instead of crashing.
+- `ADMIN_SECRET` — shared password for `/admin`. If it is missing, admin is locked and does not write.
 
-**RLS:** public `SELECT` on goals, leaderboard, contributions; writes via **service role** only.
-
-**Sync:** `POST /api/sync` with header `X-Vyprava-Admin: <VYPRVA_ADMIN_PASSWORD>` pulls plugin API → Supabase.
+The database schema is the plugin's (`expeditions`, `quest_definitions`, server scope). This app does not create a second schema.
 
 ### Admin
 
-`/admin` — password from `VYPRVA_ADMIN_PASSWORD` (default `vyprava`). Configure pools / settings; persists to `web/data/quests/` and settings into Supabase when service role is set.
+`/admin` lists servers and expeditions (návrh / aktívna / skončená) with from–to dates. An expedition opens as quest cards grouped by kind. Drafts can be generated from `web/data/matrices/` or copied onto the same or another server. Only one expedition is active per server.
 
 ### Public routes
 
@@ -100,7 +92,7 @@ Without Supabase env vars the UI loads **demo seed** from `web/data/` (including
 ### Deploy on Vercel + Cloudflare (`filiper.eu`)
 
 1. Import the repo in Vercel; **Root Directory** = `web`.
-2. Add env vars from `.env.example`.
+2. Add `DATABASE_URL` and `ADMIN_SECRET` from `.env.example`.
 3. Deploy → note the `*.vercel.app` URL.
 4. In **Cloudflare DNS** for `filiper.eu`:
    - Type **CNAME**, Name `vyprava` (or `@` / preferred host), Target `cname.vercel-dns.com` (or the hostname Vercel shows).

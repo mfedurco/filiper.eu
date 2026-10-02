@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getPortalBundle } from "@/lib/portal";
+
+export const dynamic = "force-dynamic";
 
 const cards = [
   {
@@ -28,7 +31,12 @@ const cards = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const portal = await getPortalBundle();
+  const player = portal.players[0];
+  const wood = player?.questProgress.c1_wood;
+  const sharedWood = portal.shared.find((goal) => goal.id === "s_wood");
+
   return (
     <main>
       <div className="hero-frame">
@@ -46,6 +54,12 @@ export default function HomePage() {
         Denné, týždenné a sezónne ciele. Spoločné mosty a banícke smeny. Osem
         kapitol prežitia — v hre aj na webe.
       </p>
+      {player && wood ? (
+        <p className="callout">
+          {player.playerName} na serveri {portal.serverId}: Zberač dreva {wood.current}/{wood.target}
+          {sharedWood ? ` · Spoločný sklad dreva ${sharedWood.progress}/${sharedWood.amount}` : ""}.
+        </p>
+      ) : null}
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/kampan" className="btn-primary">
           Otvor kampaň
