@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   },
   description:
     "Výprava – denné, týždenné, dlhodobé a spoločné survival ciele pre Paper server.",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({

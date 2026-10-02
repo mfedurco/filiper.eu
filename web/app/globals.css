@@ -145,19 +145,25 @@ code {
 }
 
 .hud {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem 1.5rem;
   min-height: 76px;
-  padding: 0.8rem 1.25rem;
   background: rgba(18, 26, 23, 0.88);
   color: #f3f7f4;
   border-bottom: 1px solid rgba(215, 235, 225, 0.12);
   position: sticky;
   top: 0;
   z-index: 40;
+}
+
+.hud-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  width: min(1100px, calc(100% - 20px));
+  margin-inline: auto;
+  min-height: 76px;
+  padding: 0.8rem 0;
 }
 
 .brand {
@@ -193,6 +199,7 @@ code {
   flex-wrap: wrap;
   gap: 0.15rem;
   align-items: center;
+  margin-left: auto;
 }
 
 .hud-nav a,
@@ -575,8 +582,12 @@ textarea:focus-visible {
 }
 
 @media (max-width: 800px) {
-  .board {
+  .board,
+  .hud-inner {
     width: min(1100px, calc(100% - 12px));
+  }
+
+  .board {
     padding: 10px;
     box-shadow:
       inset 3px 3px 0 var(--inset-light),
