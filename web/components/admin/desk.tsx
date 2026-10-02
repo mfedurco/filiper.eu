@@ -45,7 +45,11 @@ export function ExpeditionDesk({
   const [message, setMessage] = useState<string | null>(notice ?? null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [kind, setKind] = useState<(typeof GROUPS)[number]["id"]>("kampan");
   const [pending, start] = useTransition();
+  const group = GROUPS.find((item) => item.id === kind) ?? GROUPS[0];
+  const quests = desk.quests.filter((quest) => quest.kind === group.id);
+  const adding = editing === `new:${group.id}`;
 
   function run(action: (form: FormData) => Promise<ActionResult>, form: FormData, close = false) {
     setError(null);
@@ -115,67 +119,91 @@ export function ExpeditionDesk({
 
       <CopyForm desk={desk} pending={pending} onCopy={(form) => run(copyDraftAction, form)} />
 
-      {GROUPS.map((group) => {
-        const quests = desk.quests.filter((quest) => quest.kind === group.id);
-        const adding = editing === `new:${group.id}`;
-        return (
-          <section key={group.id} className="kind-block">
-            <div className="kind-head">
-              <div>
-                <h2>{group.label}</h2>
-                <p className="tiny">{group.text}</p>
-              </div>
-              <button
-                className="admin-btn-quiet"
-                type="button"
-                onClick={() => setEditing(adding ? null : `new:${group.id}`)}
-              >
-                {adding ? "Zavrieť" : "Pridať úlohu"}
-              </button>
-            </div>
-            {adding ? (
-              <QuestForm
-                kind={group.id}
-                expeditionId={desk.id}
-                pending={pending}
-                onSubmit={(form) => run(saveQuestAction, form, true)}
-              />
-            ) : null}
-            {quests.length === 0 ? (
-              <p className="muted">V tejto skupine zatiaľ nie je žiadna úloha.</p>
-            ) : (
-              <div className="quest-grid">
-                {quests.map((quest) =>
-                  editing === quest.id ? (
-                    <QuestForm
-                      key={quest.id}
-                      kind={quest.kind}
-                      expeditionId={desk.id}
-                      quest={quest}
-                      pending={pending}
-                      onSubmit={(form) => run(saveQuestAction, form, true)}
-                      onCancel={() => setEditing(null)}
-                    />
-                  ) : (
-                    <QuestCard
-                      key={quest.id}
-                      quest={quest}
-                      pending={pending}
-                      onEdit={() => setEditing(quest.id)}
-                      onRemove={() => {
-                        const form = new FormData();
-                        form.set("expeditionId", desk.id);
-                        form.set("questId", quest.id);
-                        run(removeQuestAction, form);
-                      }}
-                    />
-                  ),
-                )}
-              </div>
+      <div className="admin-tabs" role="tablist" aria-label="Skupiny úloh">
+        {GROUPS.map((item) => {
+          const count = desk.quests.filter((quest) => quest.kind === item.id).length;
+          const selected = item.id === group.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              id={`quest-tab-${item.id}`}
+              aria-selected={selected}
+              aria-controls="quest-panel"
+              className={selected ? "admin-tab is-active" : "admin-tab"}
+              onClick={() => {
+                setKind(item.id);
+                setEditing(null);
+              }}
+            >
+              {item.label}
+              <span className="admin-tab-count">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <section
+        className="kind-block"
+        role="tabpanel"
+        id="quest-panel"
+        aria-labelledby={`quest-tab-${group.id}`}
+      >
+        <div className="kind-head">
+          <div>
+            <h2>{group.label}</h2>
+            <p className="tiny">{group.text}</p>
+          </div>
+          <button
+            className="admin-btn-quiet"
+            type="button"
+            onClick={() => setEditing(adding ? null : `new:${group.id}`)}
+          >
+            {adding ? "Zavrieť" : "Pridať úlohu"}
+          </button>
+        </div>
+        {adding ? (
+          <QuestForm
+            kind={group.id}
+            expeditionId={desk.id}
+            pending={pending}
+            onSubmit={(form) => run(saveQuestAction, form, true)}
+          />
+        ) : null}
+        {quests.length === 0 ? (
+          <p className="muted">V tejto skupine zatiaľ nie je žiadna úloha.</p>
+        ) : (
+          <div className="quest-grid">
+            {quests.map((quest) =>
+              editing === quest.id ? (
+                <QuestForm
+                  key={quest.id}
+                  kind={quest.kind}
+                  expeditionId={desk.id}
+                  quest={quest}
+                  pending={pending}
+                  onSubmit={(form) => run(saveQuestAction, form, true)}
+                  onCancel={() => setEditing(null)}
+                />
+              ) : (
+                <QuestCard
+                  key={quest.id}
+                  quest={quest}
+                  pending={pending}
+                  onEdit={() => setEditing(quest.id)}
+                  onRemove={() => {
+                    const form = new FormData();
+                    form.set("expeditionId", desk.id);
+                    form.set("questId", quest.id);
+                    run(removeQuestAction, form);
+                  }}
+                />
+              ),
             )}
-          </section>
-        );
-      })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

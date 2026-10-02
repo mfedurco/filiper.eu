@@ -193,8 +193,41 @@ body:has(.admin-root) {
   color: #5e5852;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.admin-tab {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  background: #fff;
+  color: #1c2430;
+  box-shadow: inset 0 0 0 1px #d9d3c8;
+}
+
+.admin-tab.is-active {
+  background: #1f6b4a;
+  color: #f7fffb;
+  box-shadow: none;
+}
+
+.admin-tab-count {
+  margin-left: 0.4rem;
+  font-weight: 650;
+  opacity: 0.72;
+}
+
 .kind-block {
-  margin-top: 34px;
+  margin-top: 18px;
 }
 
 .kind-head {
