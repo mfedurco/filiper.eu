@@ -58,6 +58,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
     private boolean loggedDisabled;
     private boolean loggedInactive;
     private boolean loggedDown;
+    private boolean loggedUp;
     private int lastQuestCount = -1;
     private String replayedFor;
     private long lastDbWarningAt;
@@ -73,7 +74,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         try {
             outbox.load(outboxPath());
         } catch (IOException e) {
-            getLogger().warning("Nepodarilo sa načítať YAML frontu: " + e.getMessage());
+            getLogger().warning("Could not load the YAML outbox: " + e.getMessage());
         }
         reloadPrefix();
         quests = buildQuests();
@@ -89,7 +90,6 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         startWeb();
         startTimers();
         getServer().getAsyncScheduler().runNow(this, task -> refreshExpedition(null));
-        getLogger().info("Výprava zapnutá — úlohy sa načítavajú z Postgresu.");
     }
 
     @Override
@@ -114,7 +114,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             try {
                 outbox.save(outboxPath());
             } catch (IOException e) {
-                getLogger().warning("Nepodarilo sa uložiť YAML frontu: " + e.getMessage());
+                getLogger().warning("Could not save the YAML outbox: " + e.getMessage());
             }
         }
         closeDatabase();
@@ -204,7 +204,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
                 finish(() -> {
                     bindRememberedProgress();
                     if (!loggedDisabled) {
-                        getLogger().warning("Postgres je vypnutý (database.enabled: false). Definície úloh sú len v databáze, takže sa úlohy nesledujú. Postup hráčov ostáva v YAML.");
+                        getLogger().warning("Postgres is disabled (database.enabled: false). Quest definitions live in the database, so quests are not tracked. Player progress stays in YAML.");
                         loggedDisabled = true;
                     }
                 }, after);
@@ -216,12 +216,12 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
                     registry.clear();
                     goalCatalog = Map.of();
                     activeExpeditionId = null;
-                    warnDb("server-id je prázdne. Zápis do databázy je odmietnutý a výprava tohto servera sa nenačíta.");
+                    warnDb("server-id is blank. Database writes are refused and this server expedition is not loaded.");
                 }, after);
                 return;
             }
             if (settings.jdbcUrl() == null) {
-                finish(() -> warnDb("database.enabled je zapnuté, ale chýba priama JDBC URL (database.jdbc-url, DATABASE_URL_UNPOOLED alebo .env.local)."), after);
+                finish(() -> warnDb("database.enabled is true, but the direct JDBC URL is missing (database.jdbc-url, DATABASE_URL_UNPOOLED, or .env.local)."), after);
                 return;
             }
             DatabaseClient db = openDatabase(settings.jdbcUrl());
@@ -236,7 +236,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
                         : List.of();
                 finish(() -> applyLoaded(active.orElse(null), records), after);
             } catch (Exception e) {
-                warnDb("Načítanie výpravy zlyhalo: " + LogSafe.message(e));
+                warnDb("Failed to load the expedition: " + LogSafe.message(e));
                 closeDatabase();
                 finish(this::noteDatabaseDown, after);
             }
@@ -251,7 +251,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             goalCatalog = Map.of();
             activeExpeditionId = null;
             if (!loggedInactive) {
-                getLogger().warning("Žiadna výprava nie je aktívna — úlohy sa nesledujú.");
+                getLogger().warning("No expedition is active. Quests are not tracked.");
                 loggedInactive = true;
             }
             return;
@@ -275,12 +275,17 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         }
         goalCatalog = new CatalogMapper().install(registry, records);
         quests.onCatalogUpdated();
-        if (changed || records.size() != lastQuestCount) {
-            getLogger().info("Aktívna výprava „" + expedition.title() + "“ (" + expedition.slug() + ") — " + records.size() + " úloh.");
-            lastQuestCount = records.size();
+        if (!loggedUp) {
+            loggedUp = true;
+            String serverId = DatabaseSettings.from(getConfig(), getDataFolder().toPath()).serverId();
+            getLogger().info("Vyprava is up. server-id=" + (serverId == null || serverId.isBlank() ? "(none)" : serverId)
+                    + " active-expedition=" + newId);
+        } else if (changed || records.size() != lastQuestCount) {
+            getLogger().info("Active expedition is " + newId + " (" + records.size() + " quests).");
         }
+        lastQuestCount = records.size();
         if (switching) {
-            getLogger().info("Predchádzajúca výprava skončila. Hráči začínajú výpravu „" + expedition.title() + "“ od nuly.");
+            getLogger().info("Previous expedition ended. Players start expedition " + newId + " at zero.");
         }
         if (outbox.hasPending()) {
             scheduleFlush();
@@ -305,7 +310,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
     private void noteDatabaseDown() {
         bindRememberedProgress();
         if (!registry.hasQuests() && !loggedDown) {
-            getLogger().warning("Databáza je nedostupná. Úlohy sa nespustia, kým sa nenačíta aktívna výprava. Nedokončený postup ostáva vo YAML fronte.");
+            getLogger().warning("Database is unavailable. Quests will not start until an expedition loads. Pending progress stays in the YAML queue.");
             loggedDown = true;
         }
     }
@@ -368,7 +373,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             return;
         }
         if (settings.serverId() == null) {
-            warnDb("server-id je prázdne. Zápis do databázy je odmietnutý.");
+            warnDb("server-id is blank. Database writes are refused.");
             return;
         }
         DatabaseClient db = openDatabase(settings.jdbcUrl());
@@ -381,7 +386,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             outbox.save(outboxPath());
             loggedDown = false;
         } catch (Exception e) {
-            warnDb("Zápis postupu do Postgresu zlyhal, riadky ostávajú vo fronte: " + LogSafe.message(e));
+            warnDb("Progress write to Postgres failed. Rows stay queued: " + LogSafe.message(e));
             closeDatabase();
         }
     }
@@ -406,7 +411,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             database = opened;
             return opened;
         } catch (Exception e) {
-            warnDb("Pripojenie na Postgres zlyhalo: " + LogSafe.message(e));
+            warnDb("Postgres connection failed: " + LogSafe.message(e));
             return null;
         }
     }
@@ -423,7 +428,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         try {
             outbox.save(outboxPath());
         } catch (IOException e) {
-            getLogger().warning("Nepodarilo sa uložiť YAML frontu: " + e.getMessage());
+            getLogger().warning("Could not save the YAML outbox: " + e.getMessage());
         }
         store.save();
     }
@@ -463,10 +468,13 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
         return new QuestService(
                 registry,
                 store,
-                new RewardService(prefix),
+                new RewardService(prefix, getConfig().getString("messages.reward-given", "<aqua>Odmena:</aqua> <white>{reward}</white>")),
                 new PartyService(store),
                 new LeaderboardService(store),
                 prefix,
+                getConfig().getString("messages.quest-complete", "<green>Úloha splnená:</green> <yellow>{quest}</yellow> <gray>(+{points} bodov)</gray>"),
+                getConfig().getString("messages.shared-complete", "<green><bold>Spoločný cieľ dokončený!</bold></green> <yellow>{quest}</yellow>"),
+                getConfig().getString("messages.chapter-complete", "<gold><bold>Kapitola dokončená!</bold></gold> <gray>{chapter}</gray>"),
                 zone,
                 getConfig().getInt("daily-quest-count", 3),
                 getConfig().getInt("weekly-quest-count", 2),
@@ -494,7 +502,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             webApi = new WebApiServer(quests, getConfig(), getLogger());
             webApi.start(port, bind);
         } catch (Exception e) {
-            getLogger().severe("Web API sa nespustilo: " + e.getMessage());
+            getLogger().severe("Web API failed to start: " + e.getMessage());
         }
     }
 
@@ -632,7 +640,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync {
             Files.createDirectories(path.getParent());
             Files.writeString(path, expeditionId + "\n", StandardCharsets.UTF_8);
         } catch (IOException e) {
-            getLogger().warning("Nepodarilo sa uložiť id výpravy: " + e.getMessage());
+            getLogger().warning("Could not save the expedition id: " + e.getMessage());
         }
     }
 }

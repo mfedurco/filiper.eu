@@ -39,6 +39,9 @@ public final class QuestService {
     private final LeaderboardService leaderboard;
     private final MiniMessage mini = MiniMessage.miniMessage();
     private final String prefix;
+    private final String questComplete;
+    private final String sharedComplete;
+    private final String chapterComplete;
     private final ZoneId zone;
     private final int dailyCount;
     private final int weeklyCount;
@@ -54,6 +57,9 @@ public final class QuestService {
             PartyService parties,
             LeaderboardService leaderboard,
             String prefix,
+            String questComplete,
+            String sharedComplete,
+            String chapterComplete,
             ZoneId zone,
             int dailyCount,
             int weeklyCount,
@@ -67,6 +73,9 @@ public final class QuestService {
         this.parties = parties;
         this.leaderboard = leaderboard;
         this.prefix = prefix;
+        this.questComplete = questComplete;
+        this.sharedComplete = sharedComplete;
+        this.chapterComplete = chapterComplete;
         this.zone = zone;
         this.dailyCount = dailyCount;
         this.weeklyCount = weeklyCount;
@@ -82,6 +91,17 @@ public final class QuestService {
 
     public void onCatalogUpdated() {
         ensureSharedGoals();
+    }
+
+    private void tell(Player player, String template, String quest, int points, String chapter) {
+        if (player == null || !player.isOnline() || template == null || template.isBlank()) {
+            return;
+        }
+        String body = template
+                .replace("{quest}", quest == null ? "" : quest)
+                .replace("{points}", Integer.toString(points))
+                .replace("{chapter}", chapter == null ? "" : chapter);
+        player.sendMessage(mini.deserialize(prefix + body));
     }
 
     public String today() {
@@ -346,10 +366,7 @@ public final class QuestService {
             p.completedDaily().add(quest.id());
             p.addPoints(quest.points());
             rewards.give(player, quest.rewards());
-            player.sendMessage(mini.deserialize(prefix + "<green>Denná úloha splnená:</green> <yellow>"
-                    + quest.name() + "</yellow> <gray>(+" + quest.points() + ")</gray>"));
-            Bukkit.broadcast(mini.deserialize(prefix + "<white>" + player.getName()
-                    + "</white> splnil denne: <yellow>" + quest.name() + "</yellow>"));
+            tell(player, questComplete, quest.name(), quest.points(), "");
         }
         sync.onPlayer(p);
     }
@@ -362,10 +379,7 @@ public final class QuestService {
             p.completedWeekly().add(quest.id());
             p.addPoints(quest.points());
             rewards.give(player, quest.rewards());
-            player.sendMessage(mini.deserialize(prefix + "<aqua>Týždenná úloha splnená:</aqua> <yellow>"
-                    + quest.name() + "</yellow> <gray>(+" + quest.points() + ")</gray>"));
-            Bukkit.broadcast(mini.deserialize(prefix + "<white>" + player.getName()
-                    + "</white> splnil týždenne: <yellow>" + quest.name() + "</yellow>"));
+            tell(player, questComplete, quest.name(), quest.points(), "");
         }
         sync.onPlayer(p);
     }
@@ -378,10 +392,7 @@ public final class QuestService {
             p.completedLongTerm().add(quest.id());
             p.addPoints(quest.points());
             rewards.give(player, quest.rewards());
-            player.sendMessage(mini.deserialize(prefix + "<gold>Dlhodobý cieľ splnený:</gold> <yellow>"
-                    + quest.name() + "</yellow> <gray>(+" + quest.points() + ")</gray>"));
-            Bukkit.broadcast(mini.deserialize(prefix + "<white>" + player.getName()
-                    + "</white> splnil dlhodobý cieľ: <yellow>" + quest.name() + "</yellow>"));
+            tell(player, questComplete, quest.name(), quest.points(), "");
         }
         sync.onPlayer(p);
     }
@@ -404,12 +415,11 @@ public final class QuestService {
                 mp.addPoints(quest.points());
                 if (member != null && member.isOnline()) {
                     rewards.give(member, quest.rewards());
-                    member.sendMessage(mini.deserialize(prefix + "<light_purple>Party úloha splnená:</light_purple> <yellow>"
-                            + quest.name() + "</yellow>"));
+                    member.sendMessage(mini.deserialize(prefix
+                            + "<light_purple><bold>Party úloha splnená:</bold></light_purple> <yellow>"
+                            + quest.name() + "</yellow> <gray>(+" + quest.points() + " bodov)</gray>"));
                 }
             }
-            Bukkit.broadcast(mini.deserialize(prefix + "<light_purple>Partia <white>"
-                    + party.name() + "</white> dokončila: <yellow>" + quest.name() + "</yellow></light_purple>"));
             for (var memberId : party.members()) {
                 store.find(memberId).ifPresent(sync::onPlayer);
             }
@@ -437,12 +447,9 @@ public final class QuestService {
                 mp.addPoints(quest.points());
                 if (member != null && member.isOnline()) {
                     rewards.give(member, quest.rewards());
-                    member.sendMessage(mini.deserialize(prefix + "<green>Spoločný cieľ splnený:</green> <yellow>"
-                            + quest.name() + "</yellow>"));
+                    tell(member, sharedComplete, quest.name(), quest.points(), "");
                 }
             }
-            Bukkit.broadcast(mini.deserialize(prefix + "<green><bold>Spoločný cieľ dokončený!</bold></green> <yellow>"
-                    + quest.name() + "</yellow>"));
             for (UUID contributorId : goal.contributions().keySet()) {
                 store.find(contributorId).ifPresent(sync::onPlayer);
             }
@@ -454,8 +461,7 @@ public final class QuestService {
     private void completeCampaignQuest(Player player, PlayerProgress p, QuestDefinition quest) {
         p.completedCampaign().add(quest.id());
         p.addPoints(quest.points());
-        player.sendMessage(mini.deserialize(prefix + "<green>Úloha splnená:</green> <yellow>"
-                + quest.name() + "</yellow> <gray>(+" + quest.points() + " bodov)</gray>"));
+        tell(player, questComplete, quest.name(), quest.points(), "");
         registry.chapterById(quest.chapterId()).ifPresent(chapter -> tryCompleteChapter(player, p, chapter));
     }
 
@@ -467,10 +473,7 @@ public final class QuestService {
         p.completedChapters().add(chapter.id());
         p.addPoints(chapter.milestonePoints());
         rewards.give(player, chapter.milestoneRewards());
-        player.sendMessage(mini.deserialize(prefix + "<gold><bold>Kapitola dokončená!</bold></gold> <gray>"
-                + chapter.name() + " — " + chapter.milestoneName() + "</gray>"));
-        Bukkit.broadcast(mini.deserialize(prefix + "<gold>" + player.getName()
-                + "</gold> dokončil kapitolu <yellow>" + chapter.name() + "</yellow>!"));
+        tell(player, chapterComplete, "", chapter.milestonePoints(), chapter.name());
         int next = chapter.order() + 1;
         if (registry.chapterByOrder(next).isPresent()) {
             p.setCurrentChapterOrder(next);

@@ -31,7 +31,7 @@ public enum ObjectiveType {
             case "kill" -> KILL_ENTITY;
             case "join" -> JOIN;
             case "enter_world" -> ENTER_WORLD;
-            default -> throw new IllegalArgumentException("Neznámy spôsob sledovania: " + raw);
+            default -> throw new IllegalArgumentException("Unknown tracking type: " + raw);
         };
     }
 

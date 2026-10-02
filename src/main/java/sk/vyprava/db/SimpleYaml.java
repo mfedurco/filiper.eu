@@ -60,7 +60,7 @@ public final class SimpleYaml {
                 indent(out, indent + 1);
                 out.append("- ");
                 if (item instanceof Map<?, ?> || item instanceof List<?>) {
-                    throw new IllegalArgumentException("Vnorené zoznamy v outboxe nie sú podporované.");
+                    throw new IllegalArgumentException("Nested lists in the outbox are not supported.");
                 }
                 out.append(scalar(item)).append('\n');
             }
@@ -105,7 +105,7 @@ public final class SimpleYaml {
                 break;
             }
             if (current != indent) {
-                throw new IllegalArgumentException("Neočakávané odsadenie YAML na riadku " + (cursor[0] + 1));
+                throw new IllegalArgumentException("Unexpected YAML indent on line " + (cursor[0] + 1));
             }
             String trimmed = raw.trim();
             if (trimmed.startsWith("- ")) {
@@ -212,7 +212,7 @@ public final class SimpleYaml {
                 return i;
             }
         }
-        throw new IllegalArgumentException("YAML kľúč bez dvojbodky: " + trimmed);
+        throw new IllegalArgumentException("YAML key without a colon: " + trimmed);
     }
 
     private static int indentOf(String raw) {
@@ -221,7 +221,7 @@ public final class SimpleYaml {
             indent++;
         }
         if (indent % 2 != 0) {
-            throw new IllegalArgumentException("YAML odsadenie musí byť násobkom dvoch.");
+            throw new IllegalArgumentException("YAML indent must be a multiple of two.");
         }
         return indent / 2;
     }

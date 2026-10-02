@@ -73,7 +73,7 @@ public final class DatabaseClient implements AutoCloseable {
      */
     static ParsedUrl parse(String raw) {
         if (raw == null || raw.isBlank()) {
-            throw new IllegalArgumentException("JDBC URL chýba.");
+            throw new IllegalArgumentException("JDBC URL is missing.");
         }
         String normalized = raw.trim();
         if (normalized.startsWith("jdbc:")) {
@@ -83,10 +83,10 @@ public final class DatabaseClient implements AutoCloseable {
         try {
             uri = URI.create(normalized);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("JDBC URL nie je platná.");
+            throw new IllegalArgumentException("JDBC URL is invalid.");
         }
         if (uri.getHost() == null || uri.getPath() == null || uri.getPath().length() <= 1) {
-            throw new IllegalArgumentException("JDBC URL nie je platná.");
+            throw new IllegalArgumentException("JDBC URL is invalid.");
         }
         String user = null;
         String password = null;
@@ -128,7 +128,7 @@ public final class DatabaseClient implements AutoCloseable {
              Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery("select 1")) {
             if (!rs.next()) {
-                throw new SQLException("Databáza nevrátila kontrolný riadok.");
+                throw new SQLException("Database did not return a check row.");
             }
         }
     }
@@ -449,7 +449,7 @@ public final class DatabaseClient implements AutoCloseable {
             statement.setString(7, serverId);
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next()) {
-                    throw new SQLException("Upsert hráča nevrátil id.");
+                    throw new SQLException("Player upsert did not return an id.");
                 }
                 return uuid(rs, "id");
             }
@@ -541,7 +541,7 @@ public final class DatabaseClient implements AutoCloseable {
 
     private static void requireServer(String serverId) throws SQLException {
         if (serverId == null || serverId.isBlank()) {
-            throw new SQLException("server-id je prázdne. Zápis do databázy je odmietnutý.");
+            throw new SQLException("server-id is blank. Database writes are refused.");
         }
     }
 

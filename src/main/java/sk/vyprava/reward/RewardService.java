@@ -11,9 +11,13 @@ import java.util.stream.Collectors;
 public final class RewardService {
     private final MiniMessage mini = MiniMessage.miniMessage();
     private final String prefix;
+    private final String rewardGiven;
 
-    public RewardService(String prefix) {
+    public RewardService(String prefix, String rewardGiven) {
         this.prefix = prefix == null ? "" : prefix;
+        this.rewardGiven = rewardGiven == null || rewardGiven.isBlank()
+                ? "<aqua>Odmena:</aqua> <white>{reward}</white>"
+                : rewardGiven;
     }
 
     public void give(Player player, List<RewardItem> rewards) {
@@ -29,6 +33,6 @@ public final class RewardService {
             leftover.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
         }
         String text = rewards.stream().filter(RewardItem::isValid).map(RewardItem::display).collect(Collectors.joining(", "));
-        player.sendMessage(mini.deserialize(prefix + "<aqua>Odmena:</aqua> <white>" + text + "</white>"));
+        player.sendMessage(mini.deserialize(prefix + rewardGiven.replace("{reward}", text)));
     }
 }

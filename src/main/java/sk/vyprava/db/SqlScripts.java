@@ -28,7 +28,7 @@ public final class SqlScripts {
                 if (tag != null) {
                     int close = sql.indexOf(tag, i + tag.length());
                     if (close < 0) {
-                        throw new IllegalArgumentException("Neuzavretý dollar-quote v SQL skripte.");
+                        throw new IllegalArgumentException("Unclosed dollar quote in the SQL script.");
                     }
                     current.append(sql, i, close + tag.length());
                     i = close + tag.length();
@@ -71,7 +71,7 @@ public final class SqlScripts {
             }
             i++;
         }
-        throw new IllegalArgumentException("Neuzavretý reťazec v SQL skripte.");
+        throw new IllegalArgumentException("Unclosed string in the SQL script.");
     }
 
     private static String dollarTag(String sql, int start) {

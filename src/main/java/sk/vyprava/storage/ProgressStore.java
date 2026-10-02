@@ -207,7 +207,7 @@ public final class ProgressStore {
             playersFile().getParentFile().mkdirs();
             yaml.save(playersFile());
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Nepodarilo sa ulozit players.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save players.yml", e);
         }
     }
 
@@ -268,7 +268,7 @@ public final class ProgressStore {
             partiesFile.getParentFile().mkdirs();
             yaml.save(partiesFile);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Nepodarilo sa ulozit parties.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save parties.yml", e);
         }
     }
 
@@ -315,7 +315,7 @@ public final class ProgressStore {
             sharedFile().getParentFile().mkdirs();
             yaml.save(sharedFile());
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Nepodarilo sa ulozit shared.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save shared.yml", e);
         }
     }
 
