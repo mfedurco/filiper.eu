@@ -1,3 +1,4 @@
+import { issueClaimCode } from "@/lib/player-profile";
 import { bearerKey } from "@/lib/server-key";
 import { authorizePlugin, loadForPlugin, PluginPayload, PluginRejected, pushForPlugin } from "@/lib/plugin-sync";
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return rejected(400);
   }
-  const record = body as { serverId?: unknown; op?: unknown };
+  const record = body as { serverId?: unknown; op?: unknown; uuid?: unknown; name?: unknown; code?: unknown };
   const serverId = String(record.serverId ?? "").trim();
   const op = String(record.op ?? "");
   const key = bearerKey(request.headers.get("authorization"));
@@ -33,6 +34,15 @@ export async function POST(request: Request) {
     }
     if (op === "push") {
       await pushForPlugin(serverId, body);
+      return Response.json({ ok: true });
+    }
+    if (op === "claim") {
+      try {
+        await issueClaimCode(serverId, String(record.uuid ?? ""), String(record.name ?? ""), String(record.code ?? ""));
+      } catch (error) {
+        if (error instanceof Error && error.message === "payload") return rejected(400);
+        throw error;
+      }
       return Response.json({ ok: true });
     }
     return rejected(400);

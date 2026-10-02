@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeaderboard } from "@/lib/data";
+import { getPortalMeta } from "@/lib/portal";
 import { PortalGap } from "@/components/portal-gap";
 import { ErrorState, PageHero } from "@/components/ui";
 
@@ -12,8 +13,11 @@ export const dynamic = "force-dynamic";
 
 export default async function RebricekPage() {
   let entries;
+  let serverId = "";
   try {
-    entries = await getLeaderboard();
+    const [loaded, meta] = await Promise.all([getLeaderboard(), getPortalMeta()]);
+    entries = loaded;
+    serverId = meta.serverId;
   } catch {
     return (
       <main className="pb-16 pt-8">
@@ -57,14 +61,20 @@ export default async function RebricekPage() {
             <tbody>
               {sorted.map((entry, index) => (
                 <tr
-                  key={entry.name}
+                  key={entry.uuid || `${entry.name}-${index}`}
                   className="border-b border-[var(--line)] last:border-b-0"
                 >
                   <td className="px-4 py-4 font-display text-lg text-moss-100 md:px-6">
                     {index + 1}
                   </td>
                   <td className="px-4 py-4 font-medium text-moss-50 md:px-6">
-                    {entry.name}
+                    {entry.uuid ? (
+                      <Link href={`/hrac/${serverId}/${entry.uuid}`} className="underline">
+                        {entry.name}
+                      </Link>
+                    ) : (
+                      entry.name
+                    )}
                   </td>
                   <td className="px-4 py-4 text-mist-muted md:px-6">
                     {entry.chapter}

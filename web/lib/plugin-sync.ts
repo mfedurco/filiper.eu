@@ -1,6 +1,8 @@
 import type { PoolClient } from "pg";
 import { withTx } from "@/lib/db";
 import { isServerId } from "@/lib/portal";
+import { mergeNameNote } from "@/lib/name-note";
+import { ensurePlayerProfileColumns } from "@/lib/player-profile";
 import { ensureServerKeyColumn, serverKeyMatches } from "@/lib/server-key";
 
 const GOAL_KINDS = new Set(["daily", "weekly", "long_term", "shared", "campaign", "party"]);
@@ -68,6 +70,7 @@ export class PluginPayload extends Error {
 
 export async function authorizePlugin(serverId: string, rawKey: string | null): Promise<void> {
   await ensureServerKeyColumn();
+  await ensurePlayerProfileColumns();
   if (!isServerId(serverId) || !rawKey) {
     throw new PluginRejected();
   }
@@ -208,25 +211,34 @@ async function pushPlayer(
 ): Promise<void> {
   const mcUuid = String(snapshot.uuid ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(mcUuid)) throw new PluginPayload();
+  const nextName = clip(String(snapshot.name ?? "Unknown"), 16);
+  const existing = await client.query<{ name: string; name_note: string | null }>(
+    "select name, name_note from players where server_id = $1 and mc_uuid = $2",
+    [serverId, mcUuid],
+  );
+  const prior = existing.rows[0];
+  const nameNote = mergeNameNote(prior?.name_note, String(snapshot.nameNote ?? ""), prior?.name, nextName);
   const player = await client.query<{ id: string }>(
-    `insert into players (mc_uuid, name, chapter, total_points, weekly_points, party_id, server_id, updated_at)
-     values ($1, $2, $3, $4, $5, $6, $7, now())
+    `insert into players (mc_uuid, name, chapter, total_points, weekly_points, party_id, server_id, name_note, updated_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, now())
      on conflict (server_id, mc_uuid) do update set
        name = excluded.name,
        chapter = excluded.chapter,
        total_points = excluded.total_points,
        weekly_points = excluded.weekly_points,
        party_id = excluded.party_id,
+       name_note = excluded.name_note,
        updated_at = now()
      returning id::text as id`,
     [
       mcUuid,
-      clip(String(snapshot.name ?? "Unknown"), 64),
+      nextName,
       Math.max(1, integer(snapshot.chapter, 1)),
       integer(snapshot.totalPoints, 0),
       integer(snapshot.weeklyPoints, 0),
       blankToNull(snapshot.partyId),
       serverId,
+      nameNote,
     ],
   );
   const playerId = player.rows[0]?.id;
@@ -246,7 +258,7 @@ async function pushPlayer(
       playerId,
       expeditionId,
       serverId,
-      clip(String(snapshot.name ?? "Unknown"), 64),
+      nextName,
       integer(snapshot.totalPoints, 0),
       integer(snapshot.weeklyPoints, 0),
       Math.max(1, integer(snapshot.chapter, 1)),

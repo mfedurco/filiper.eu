@@ -355,6 +355,7 @@ export const getPortalBundle = cache(async (): Promise<PortalBundle> => {
         ...blank,
         leaderboard: players.map((player) => ({
           name: player.name,
+          uuid: player.mc_uuid ?? "",
           totalPoints: player.total_points,
           weeklyPoints: player.weekly_points,
           chapter: player.chapter,
@@ -397,11 +398,12 @@ export const getPortalBundle = cache(async (): Promise<PortalBundle> => {
          order by c.amount desc`,
         [meta.serverId, expeditionId],
       ),
-      dbQuery<LeaderboardEntry & { total_points: number; weekly_points: number }>(
-        `select name, total_points, weekly_points, chapter
-         from leaderboard_snapshot
-         where server_id = $1 and expedition_id = $2
-         order by total_points desc, name
+      dbQuery<LeaderboardEntry & { total_points: number; weekly_points: number; mc_uuid: string | null }>(
+        `select b.name, b.total_points, b.weekly_points, b.chapter, p.mc_uuid
+         from leaderboard_snapshot b
+         left join players p on p.id = b.player_id
+         where b.server_id = $1 and b.expedition_id = $2
+         order by b.total_points desc, b.name
          limit 50`,
         [meta.serverId, expeditionId],
       ),
@@ -443,6 +445,7 @@ export const getPortalBundle = cache(async (): Promise<PortalBundle> => {
       const snap = snapshotByName.get(player.name);
       return {
         name: player.name,
+        uuid: player.mc_uuid ?? "",
         totalPoints: Math.max(player.total_points, snap?.total_points ?? 0),
         weeklyPoints: Math.max(player.weekly_points, snap?.weekly_points ?? 0),
         chapter: Math.max(player.chapter, snap?.chapter ?? 1),
@@ -452,6 +455,7 @@ export const getPortalBundle = cache(async (): Promise<PortalBundle> => {
       for (const row of board) {
         leaderboard.push({
           name: row.name,
+          uuid: row.mc_uuid ?? "",
           totalPoints: row.total_points,
           weeklyPoints: row.weekly_points,
           chapter: row.chapter,

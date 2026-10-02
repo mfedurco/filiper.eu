@@ -9,7 +9,7 @@ export type PublicExpedition = {
   quests: PublicQuest[];
 };
 
-export type PublicLeader = { player: string; points: number };
+export type PublicLeader = { player: string; points: number; uuid: string };
 
 export type PublicSnapshot = {
   serverId: string;
@@ -50,8 +50,8 @@ export async function getPublicSnapshot(rawServerId: string): Promise<PublicSnap
          order by sort_order, title`,
         [expedition.id, serverId],
       ),
-      dbQuery<{ name: string; total_points: number }>(
-        `select name, total_points
+      dbQuery<{ name: string; total_points: number; mc_uuid: string | null }>(
+        `select name, total_points, mc_uuid
          from players
          where server_id = $1
          order by total_points desc, name`,
@@ -68,9 +68,11 @@ export async function getPublicSnapshot(rawServerId: string): Promise<PublicSnap
     ]);
 
     const snapshot = new Map(board.map((row) => [row.name, pointsOf(row.total_points)]));
-    const leaderboard: PublicLeader[] = (players.length ? players : board).map((row) => ({
+    const source = players.length ? players : board.map((row) => ({ ...row, mc_uuid: null as string | null }));
+    const leaderboard: PublicLeader[] = source.map((row) => ({
       player: row.name,
       points: Math.max(pointsOf(row.total_points), snapshot.get(row.name) ?? 0),
+      uuid: row.mc_uuid ?? "",
     }));
     leaderboard.sort((left, right) => right.points - left.points || left.player.localeCompare(right.player, "sk"));
 

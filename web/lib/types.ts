@@ -62,6 +62,7 @@ export type QuestPool = {
 
 export type LeaderboardEntry = {
   name: string;
+  uuid: string;
   totalPoints: number;
   weeklyPoints: number;
   chapter: number;
