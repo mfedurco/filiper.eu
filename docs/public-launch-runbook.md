@@ -14,6 +14,46 @@ Vercel Root Directory remains `web`. Configure `DATABASE_URL`, `APP_ORIGIN`,
 Apply `web/neon/008_production_operations.sql` manually after a restore point.
 Do not run migrations from Vercel requests.
 
+## External edge controls (not configured)
+
+No Cloudflare, Vercel, or Neon management session was authenticated during this
+work. The rules and alerts below are recommendations only; existing account
+rules and plan entitlements remain unknown. `vyprava.filiper.eu` is currently
+proxied by Cloudflare in front of Vercel.
+
+In Cloudflare select `filiper.eu` → **Security** → **Security rules** →
+**Create rule** → **Rate limiting rules**. Count by IP, return 429/block, and
+place these before broader rules:
+
+| Route expression | Threshold | Mitigation |
+| --- | ---: | ---: |
+| `http.host eq "vyprava.filiper.eu" and http.request.method eq "GET" and http.request.uri.path eq "/api/auth/google"` | 20 / 60 s / IP | 60 s |
+| `http.host eq "vyprava.filiper.eu" and http.request.method eq "GET" and http.request.uri.path eq "/api/auth/google/callback"` | 30 / 60 s / IP | 60 s |
+| `http.host eq "vyprava.filiper.eu" and http.request.method eq "POST" and (starts_with(http.request.uri.path, "/hrac/") or starts_with(http.request.uri.path, "/admin"))` | 30 / 60 s / IP | 60 s |
+| `http.host eq "vyprava.filiper.eu" and http.request.method eq "POST" and http.request.uri.path eq "/api/plugin/sync"` | 120 / 60 s / IP | 10 s |
+| `http.host eq "vyprava.filiper.eu" and http.request.method eq "GET" and (starts_with(http.request.uri.path, "/api/public/") or http.request.uri.path in {"/api/leaderboard" "/api/quests/campaign" "/api/quests/daily" "/api/quests/party"})` | 120 / 60 s / IP | 60 s |
+
+The plugin allowance supports roughly 20 servers behind one NAT at one retry per
+10 seconds. Increase it proportionally before adding more. Never put a browser
+challenge on `/api/plugin/sync`.
+
+Cloudflare currently documents 1 rate rule on Free, 2 on Pro, and 5 on
+Business. On Pro, retain the plugin rule and combine all other listed paths at
+60 / 60 s / IP with 60-second mitigation (method matching is unavailable). On
+Free, use one zone rule for the same paths, including `/api/plugin/sync`, at
+20 / 10 s / IP with 10-second mitigation, after confirming no path collision
+on another hostname. If that is unsuitable, use Vercel **Project → Firewall →
+Configure → New Rule**, keyed by IP, with the same thresholds; begin in **Log**
+and review traffic before enforcing 429.
+
+Deploy the available Cloudflare managed ruleset at defaults. Do not enable
+ordinary Bot Fight Mode or standing Under Attack Mode. Super Bot Fight Mode is
+safe only with an earlier custom Skip rule scoped to that product:
+
+```text
+http.host eq "vyprava.filiper.eu" and (http.request.uri.path eq "/api/plugin/sync" or starts_with(http.request.uri.path, "/api/auth/google") or starts_with(http.request.uri.path, "/hrac/") or starts_with(http.request.uri.path, "/admin"))
+```
+
 ## Monitoring
 
 Public uptime check:
@@ -45,6 +85,27 @@ The scheduled GitHub workflow checks only the public minimal endpoint and
 security headers. It contains no monitoring secret and therefore does not prove
 database readiness. Vercel invokes `/api/cron/cleanup` daily from `web/vercel.json`
 using `CRON_SECRET`; the endpoint is idempotent and batch-bounded.
+
+No external alerts were configured. If the plan permits, create Cloudflare
+Health Checks in **Traffic/Smart Shield → Health Checks**:
+
+- `vyprava-portal`: HTTPS host `vyprava.filiper.eu`, path `/`, GET, port 443,
+  60-second interval, 5-second timeout, 2 retries, accept 200–399.
+- `vyprava-public-api`: same host, path `/api/public/test`, GET, port 443,
+  60-second interval, 5-second timeout, 2 retries, accept 200 only.
+
+Subscribe Miroslav's owned destination to both status-change notifications.
+In Vercel **Observability → Alerts**, when entitled, enable production **Error
+Anomaly** and **Usage Anomaly → Duration/Function duration**, attach an owned
+email/Slack destination, and test it. In Neon, configure connection saturation,
+storage/compute limits, suspend/resume, and query-latency alerts if exposed.
+
+If those entitlements are unavailable, configure an external monitor: every
+60 seconds check `/` (200–399) and `/api/public/test` (200), each under 2,000 ms;
+every 5 minutes assert `Content-Security-Policy`, `X-Frame-Options: DENY`,
+`X-Content-Type-Options: nosniff`, `Referrer-Policy`, and
+`Permissions-Policy`. Alert after 2 consecutive failures and resolve after 2
+successes.
 
 ## Privacy request operations
 
