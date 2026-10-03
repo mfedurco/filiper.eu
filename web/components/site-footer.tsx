@@ -10,6 +10,8 @@ export function SiteFooter() {
       <div className="flex flex-wrap gap-4">
         <Link href="/kampan">Kampaň</Link>
         <Link href="/spolocne">Spoločné</Link>
+        <Link href="/sukromie">Súkromie</Link>
+        <Link href="/ucet">Môj účet</Link>
         <Link href="/admin">Admin</Link>
       </div>
     </footer>

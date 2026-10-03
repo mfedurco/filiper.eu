@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  allowRequest,
   appOrigin,
   BodyTooLarge,
   isTrustedOrigin,
@@ -35,11 +34,4 @@ describe("request limits", () => {
     await expect(readLimitedJson(request, 20)).rejects.toBeInstanceOf(BodyTooLarge);
   });
 
-  it("enforces a fixed-window request budget", () => {
-    const key = `test-${crypto.randomUUID()}`;
-    expect(allowRequest(key, 2, 1_000, 10)).toBe(true);
-    expect(allowRequest(key, 2, 1_000, 11)).toBe(true);
-    expect(allowRequest(key, 2, 1_000, 12)).toBe(false);
-    expect(allowRequest(key, 2, 1_000, 1_011)).toBe(true);
-  });
 });

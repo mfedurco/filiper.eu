@@ -3,11 +3,6 @@ import { headers } from "next/headers";
 const PRODUCTION_ORIGIN = "https://vyprava.filiper.eu";
 const DEFAULT_BODY_LIMIT = 2_000_000;
 
-type Bucket = { count: number; resetAt: number };
-const globalSecurity = globalThis as unknown as {
-  vypravaRateBuckets?: Map<string, Bucket>;
-};
-
 function configuredOrigin(): string | null {
   const raw = process.env.APP_ORIGIN?.trim();
   if (!raw) return null;
@@ -51,23 +46,6 @@ export async function requireTrustedMutation(): Promise<void> {
 export function clientAddress(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   return forwarded || request.headers.get("x-real-ip")?.trim() || "unknown";
-}
-
-export function allowRequest(key: string, limit: number, windowMs: number, now = Date.now()): boolean {
-  const buckets = globalSecurity.vypravaRateBuckets ??= new Map<string, Bucket>();
-  const current = buckets.get(key);
-  if (!current || current.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  if (current.count >= limit) return false;
-  current.count += 1;
-  if (buckets.size > 10_000) {
-    for (const [bucketKey, bucket] of buckets) {
-      if (bucket.resetAt <= now) buckets.delete(bucketKey);
-    }
-  }
-  return true;
 }
 
 export async function readLimitedJson(

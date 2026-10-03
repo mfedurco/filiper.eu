@@ -24,7 +24,9 @@ import {
   type PortalRole,
 } from "@/lib/portal-accounts";
 import { ensureServerKeyColumn, generateServerKey, hashServerKey } from "@/lib/server-key";
-import { allowRequest, requireTrustedMutation } from "@/lib/security";
+import { operationalLog, requestId } from "@/lib/operations";
+import { sharedRateLimit } from "@/lib/rate-limit";
+import { requireTrustedMutation } from "@/lib/security";
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 export type KeyResult = { ok: true; key: string } | { ok: false; message: string };
@@ -37,16 +39,22 @@ function fail(error: unknown): ActionResult {
 }
 
 async function gateServer(serverId: string): Promise<ActionResult | null> {
+  const correlationId = requestId();
   try {
     await requireTrustedMutation();
   } catch {
+    operationalLog({ event: "role.denied", requestId: correlationId, outcome: "denied", reason: "untrusted_origin" });
     return { ok: false, message: "Požiadavka neprišla z portálu." };
   }
   if (!googleConfigured()) return { ok: false, message: "Prihlásenie cez Google nie je nastavené." };
   if (!hasDatabase()) return { ok: false, message: "Databáza nie je pripojená." };
   const account = await requireSpravca();
-  if (!account) return { ok: false, message: "Tento Google účet výpravy nespravuje." };
+  if (!account) {
+    operationalLog({ event: "role.denied", requestId: correlationId, outcome: "denied", reason: "not_manager" });
+    return { ok: false, message: "Tento Google účet výpravy nespravuje." };
+  }
   if (!isServerId(serverId) || !allowsServer(account, serverId)) {
+    operationalLog({ event: "role.denied", requestId: correlationId, outcome: "denied", reason: "server_scope" });
     return { ok: false, message: "Tento server nespravuješ." };
   }
   return null;
@@ -64,17 +72,29 @@ function refresh() {
 }
 
 export async function bootstrapAction(formData: FormData) {
+  const correlationId = requestId();
   await requireTrustedMutation();
   const session = await readSession();
   if (!session || !adminConfigured()) redirect("/admin");
-  if (!allowRequest(`bootstrap:${session.sub}`, 5, 15 * 60_000)) {
+  const rate = await sharedRateLimit("admin_bootstrap", session.sub, 5, 15 * 60_000);
+  if (!rate.allowed) {
+    operationalLog({
+      event: "role.denied",
+      requestId: correlationId,
+      outcome: rate.reason ? "degraded" : "denied",
+      reason: rate.reason ?? "bootstrap_budget",
+    });
     redirect("/admin?chyba=1");
   }
   const password = String(formData.get("secret") ?? "");
-  if (!secretMatches(password)) redirect("/admin?chyba=1");
+  if (!secretMatches(password)) {
+    operationalLog({ event: "role.denied", requestId: correlationId, outcome: "denied", reason: "bootstrap_secret" });
+    redirect("/admin?chyba=1");
+  }
   try {
     await bootstrapSpravca(session);
   } catch {
+    operationalLog({ event: "role.denied", requestId: correlationId, outcome: "denied", reason: "bootstrap_rejected" });
     redirect("/admin?chyba=1");
   }
   redirect("/admin");

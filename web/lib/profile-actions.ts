@@ -5,7 +5,8 @@ import { readSession } from "@/lib/google-auth";
 import { claimProfile, isPlayerUuid, saveProfileAbout } from "@/lib/player-profile";
 import { rememberSignedIn } from "@/lib/portal-accounts";
 import { isServerId } from "@/lib/portal";
-import { allowRequest, requireTrustedMutation } from "@/lib/security";
+import { sharedRateLimit } from "@/lib/rate-limit";
+import { requireTrustedMutation } from "@/lib/security";
 
 export async function claimProfileAction(formData: FormData) {
   await requireTrustedMutation();
@@ -14,7 +15,8 @@ export async function claimProfileAction(formData: FormData) {
   const uuid = String(formData.get("uuid") ?? "");
   const code = String(formData.get("code") ?? "");
   if (!session) redirect(profilePath(serverId, uuid, "prihlasenie"));
-  if (!allowRequest(`claim:${session.sub}`, 10, 15 * 60_000)) {
+  const rate = await sharedRateLimit("profile_claim", session.sub, 10, 15 * 60_000);
+  if (!rate.allowed) {
     redirect(profilePath(serverId, uuid, "kod"));
   }
   const linked = await claimProfile(session.sub, serverId, uuid, code);

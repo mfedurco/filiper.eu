@@ -79,6 +79,18 @@ export async function authorizePlugin(serverId: string, rawKey: string | null): 
   if (!ok) throw new PluginRejected();
 }
 
+export async function markPluginSeen(serverId: string, pushed: boolean): Promise<void> {
+  await dbQuery(
+    `insert into portal_sync_state (server_id, last_seen_at, last_push_at, updated_at)
+     values ($1, now(), case when $2 then now() else null end, now())
+     on conflict (server_id) do update set
+       last_seen_at = now(),
+       last_push_at = case when $2 then now() else portal_sync_state.last_push_at end,
+       updated_at = now()`,
+    [serverId, pushed],
+  );
+}
+
 export async function loadForPlugin(serverId: string): Promise<PluginLoad> {
   return withTx(async (client) => {
     await client.query("select apply_expedition_schedule($1, $2)", [new Date().toISOString(), serverId]);

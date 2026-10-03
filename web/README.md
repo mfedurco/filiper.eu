@@ -21,6 +21,10 @@ npm run dev
 | `APP_ORIGIN` | Pevný verejný origin pre OAuth a kontrolu pôvodu zápisov. |
 | `ADMIN_SECRET` | Jednorazové heslo na vytvorenie prvého Google správcu. Nie je to admin login. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth pre hráčske profily a správu. |
+| `RATE_LIMIT_SECRET` | Náhodný spoločný HMAC secret (min. 32 bajtov) pre distribuované limity. |
+| `HEALTH_SECRET` | Samostatný secret pre podrobný `/api/health`. |
+| `CRON_SECRET` | Samostatný secret pre denný cleanup. |
+| `PLUGIN_SYNC_STALE_MINUTES` | Voliteľná hranica neaktívneho pluginu, predvolene 5 minút. |
 
 Hodnoty patria do `.env.local`, nie do gitu. Ak `DATABASE_URL` na nasadení chýba, verejné stránky ostanú v prázdnom stave a nespadnú.
 
@@ -51,5 +55,12 @@ npm run build
 npm audit --omit=dev
 ```
 
-Neon migrácie sa aplikujú v poradí podľa čísla. Pred migráciou over restore point
-a obnovu skúšaj do samostatnej Neon branch. Portál migrácie nespúšťa automaticky.
+Neon migrácie sa aplikujú v poradí podľa čísla. Migrácia
+`008_production_operations.sql` pridáva zdieľané limity, stav synchronizácie a
+žiadosť o údaje. Pred migráciou over restore point; portál migrácie nespúšťa
+automaticky.
+
+Verejný `GET /api/health` vracia iba stav aplikácie. Podrobný stav databázy,
+schémy, aktívnej výpravy a pluginu vyžaduje `Authorization: Bearer
+$HEALTH_SECRET`. Monitoring, cleanup, incidenty a rollback opisuje
+`../docs/public-launch-runbook.md`.

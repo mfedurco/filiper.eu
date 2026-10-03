@@ -85,6 +85,10 @@ Set in `.env.local` or the host, never commit the values:
 - `APP_ORIGIN` — canonical portal origin, normally `https://vyprava.filiper.eu`. OAuth and write-origin checks do not trust forwarded host headers.
 - `ADMIN_SECRET` — known only to the person who saves the first Google account as `spravca` with every server. It is not a shared admin password.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — the existing Google OAuth client. Sign-in starts at `/api/auth/google` and returns through `/api/auth/google/callback`. Production redirect URI is `https://vyprava.filiper.eu/api/auth/google/callback`. If either value is missing, Google sign-in stays off and `/admin` does not write.
+- `RATE_LIMIT_SECRET` — shared random HMAC secret (at least 32 bytes) for the Neon-backed limiter.
+- `HEALTH_SECRET` — separate random secret for detailed readiness.
+- `CRON_SECRET` — separate random secret for scheduled cleanup.
+- `PLUGIN_SYNC_STALE_MINUTES` — optional readiness threshold, default 5.
 
 The database schema is the plugin's (`expeditions`, `quest_definitions`, server scope). This app does not create a second schema.
 
@@ -116,16 +120,15 @@ The screen stays a server list: each server shows its active expedition, dates, 
 Apply `web/neon/*.sql` in numeric order through a reviewed deployment step. Never
 run migrations from a public request. Before each migration, create a Neon restore
 point (or verify point-in-time recovery), and periodically test a restore into a
-separate branch. `007_security_hardening.sql` must be applied before a public
-launch; it adds credential/claim constraints and indexes.
+separate branch. `007_security_hardening.sql` and
+`008_production_operations.sql` must be applied before a public launch.
 
 Keep `DATABASE_URL`, `ADMIN_SECRET`, Google credentials, and raw server keys only
 in the deployment/server secret stores. Rotate a server key in `/admin` after any
-suspected disclosure. The portal has no complete alerting stack yet: operations
-must monitor Vercel error rates, Neon connection/storage limits, and failed plugin
-sync warnings. A `200` from `/api/public/{serverId}` proves only that the public
-route responded; verify that an expected active expedition and recent leaderboard
-data are present as the application-level health check.
+suspected disclosure. Use public `/api/health` for uptime and its bearer-protected
+detailed response for database/schema/expedition/plugin readiness. Monitoring,
+privacy operations, incident handling, rollback, and the exact recovery evidence
+are in [`docs/public-launch-runbook.md`](docs/public-launch-runbook.md).
 
 ## Repo layout
 
