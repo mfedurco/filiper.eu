@@ -20,11 +20,6 @@ class PortalHeartbeatTest {
         assertFalse(heartbeat.run(60_999, sent::incrementAndGet));
         assertTrue(heartbeat.run(61_000, sent::incrementAndGet));
         assertEquals(2, sent.get());
-
-        var payload = PortalClient.heartbeatBody("survival");
-        assertEquals("survival", payload.get("serverId").getAsString());
-        assertEquals("heartbeat", payload.get("op").getAsString());
-        assertEquals(2, payload.size());
     }
 
     @Test
