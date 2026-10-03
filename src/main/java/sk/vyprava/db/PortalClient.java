@@ -32,6 +32,18 @@ public final class PortalClient implements AutoCloseable {
         return parseLoad(post(portalUrl, serverKey, body));
     }
 
+    public void heartbeat(String portalUrl, String serverId, String serverKey)
+            throws IOException, InterruptedException, PortalRejectedException {
+        post(portalUrl, serverKey, heartbeatBody(serverId));
+    }
+
+    static JsonObject heartbeatBody(String serverId) {
+        JsonObject body = new JsonObject();
+        body.addProperty("serverId", serverId);
+        body.addProperty("op", "heartbeat");
+        return body;
+    }
+
     public void claim(String portalUrl, String serverId, String serverKey, UUID playerId, String name, String code)
             throws IOException, InterruptedException, PortalRejectedException {
         JsonObject body = new JsonObject();

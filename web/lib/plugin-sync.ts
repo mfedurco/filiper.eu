@@ -3,7 +3,7 @@ import { dbQuery, withTx } from "@/lib/db";
 import { isServerId } from "@/lib/portal";
 import { mergeNameNote } from "@/lib/name-note";
 import { ensurePlayerProfileColumns } from "@/lib/player-profile";
-import { ensureServerKeyColumn, serverKeyMatches } from "@/lib/server-key";
+import { ensureServerKeyColumn, serverKeyHashMatches, serverKeyMatches } from "@/lib/server-key";
 
 const GOAL_KINDS = new Set(["daily", "weekly", "long_term", "shared", "campaign", "party"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -89,6 +89,28 @@ export async function markPluginSeen(serverId: string, pushed: boolean): Promise
        updated_at = now()`,
     [serverId, pushed],
   );
+}
+
+export async function heartbeatPlugin(serverId: string, rawKey: string | null): Promise<void> {
+  await ensureServerKeyColumn();
+  if (!isServerId(serverId) || !rawKey) throw new PluginRejected();
+  await withTx(async (client) => {
+    const server = await client.query<{ key_hash: string | null }>(
+      "select key_hash from servers where id = $1 for share",
+      [serverId],
+    );
+    if ((server.rowCount ?? 0) !== 1 || !serverKeyHashMatches(server.rows[0]?.key_hash, rawKey)) {
+      throw new PluginRejected();
+    }
+    await client.query(
+      `insert into portal_sync_state (server_id, last_seen_at, updated_at)
+       values ($1, now(), now())
+       on conflict (server_id) do update set
+         last_seen_at = now(),
+         updated_at = now()`,
+      [serverId],
+    );
+  });
 }
 
 export async function loadForPlugin(serverId: string): Promise<PluginLoad> {

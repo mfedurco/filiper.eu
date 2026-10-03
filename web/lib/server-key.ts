@@ -37,14 +37,18 @@ export function bearerKey(header: string | null): string | null {
  * A key minted for another server id does not pass.
  */
 export async function serverKeyMatches(serverId: string, rawKey: string): Promise<boolean> {
-  const computed = createHash("sha256").update(rawKey, "utf8").digest();
   const rows = await dbQuery<{ key_hash: string | null }>(
     "select key_hash from servers where id = $1",
     [serverId],
   );
-  const storedHex = rows[0]?.key_hash ?? "";
+  return rows.length === 1 && serverKeyHashMatches(rows[0]?.key_hash, rawKey);
+}
+
+export function serverKeyHashMatches(storedHash: string | null | undefined, rawKey: string): boolean {
+  const computed = createHash("sha256").update(rawKey, "utf8").digest();
+  const storedHex = storedHash ?? "";
   const stored =
     /^[0-9a-f]{64}$/i.test(storedHex) ? Buffer.from(storedHex, "hex") : Buffer.alloc(32);
   const equal = timingSafeEqual(computed, stored);
-  return equal && rows.length === 1 && storedHex.length > 0;
+  return equal && storedHex.length > 0;
 }

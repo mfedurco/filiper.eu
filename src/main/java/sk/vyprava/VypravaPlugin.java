@@ -15,6 +15,7 @@ import sk.vyprava.db.OutboxFlusher;
 import sk.vyprava.db.PartySnapshot;
 import sk.vyprava.db.PlayerSnapshot;
 import sk.vyprava.db.PortalClient;
+import sk.vyprava.db.PortalHeartbeat;
 import sk.vyprava.db.PortalRejectedException;
 import sk.vyprava.db.ProgressOutbox;
 import sk.vyprava.db.QuestRecord;
@@ -75,6 +76,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
     private long lastDbWarningAt;
     private volatile long retryNotBefore;
     private volatile long retryDelayMillis = 10_000;
+    private final PortalHeartbeat portalHeartbeat = new PortalHeartbeat();
     private final MiniMessage mini = MiniMessage.miniMessage();
 
     @Override
@@ -654,6 +656,29 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
         });
     }
 
+    private void heartbeatPortal() {
+        DatabaseSettings settings = DatabaseSettings.from(getConfig(), getDataFolder().toPath());
+        if (!settings.enabled() || settings.serverId() == null
+                || settings.serverKey() == null || settings.portalUrl() == null) {
+            return;
+        }
+        ClassLoader previous = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
+        try {
+            portalHeartbeat.run(System.currentTimeMillis(), () -> portal().heartbeat(
+                    settings.portalUrl(),
+                    settings.serverId(),
+                    settings.serverKey()
+            ));
+        } catch (PortalRejectedException e) {
+            warnDb("Portal rejected the server key heartbeat.");
+        } catch (Exception e) {
+            warnDb("Portal heartbeat failed: " + LogSafe.message(e));
+        } finally {
+            Thread.currentThread().setContextClassLoader(previous);
+        }
+    }
+
     private void noteJdbcIgnored(DatabaseSettings settings) {
         if (loggedJdbcIgnored || !settings.jdbcConfigured()) {
             return;
@@ -778,6 +803,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
         }
         timersStarted = true;
         getServer().getAsyncScheduler().runAtFixedRate(this, task -> refreshExpedition(null), 60, 60, TimeUnit.SECONDS);
+        getServer().getAsyncScheduler().runAtFixedRate(this, task -> heartbeatPortal(), 5, 10, TimeUnit.SECONDS);
         getServer().getAsyncScheduler().runAtFixedRate(this, task -> {
             if (outbox != null && outbox.hasPending()) {
                 flushGuarded();

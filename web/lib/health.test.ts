@@ -54,4 +54,22 @@ describe("detailed readiness", () => {
       },
     });
   });
+
+  it("reports missing sync until a configured server sends its first heartbeat", async () => {
+    mocks.dbQuery
+      .mockResolvedValueOnce([{
+        rate_limits: "security_rate_limits",
+        sync_state: "portal_sync_state",
+        privacy_requests: "privacy_requests",
+      }])
+      .mockResolvedValueOnce([{ count: 1 }])
+      .mockResolvedValueOnce([{ configured: 1, seen: 0, fresh: 0 }]);
+    await expect(detailedHealth()).resolves.toMatchObject({
+      status: "not_ready",
+      checks: {
+        activeExpedition: "ok",
+        pluginSync: "missing",
+      },
+    });
+  });
 });

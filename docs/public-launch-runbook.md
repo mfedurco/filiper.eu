@@ -76,6 +76,13 @@ schema, active expedition, and plugin liveness. `not_ready` returns HTTP 503.
 Alert immediately for database/schema failures; investigate missing expedition
 or stale/missing plugin sync before declaring gameplay available.
 
+The Paper plugin sends a small authenticated heartbeat without player data,
+starting about 5 seconds after enable and then every 60 seconds. Failed attempts
+back off from 10 seconds to at most 5 minutes and use rate-limited warnings.
+After installing/restarting a healthy plugin, readiness should normally change
+from `pluginSync: missing` to `ok` within 10 seconds; allow up to 70 seconds
+before investigating routing, server id, or server-key configuration.
+
 Also alert on Vercel 5xx/latency, Neon connections/storage, repeated structured
 `plugin.auth_denied`, `plugin.failure`, `oauth.failure`, and `database.failure`
 events, and Paper outbox warnings. `X-Request-Id` correlates a response with a

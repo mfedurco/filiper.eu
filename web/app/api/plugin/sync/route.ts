@@ -2,6 +2,7 @@ import { issueClaimCode } from "@/lib/player-profile";
 import { bearerKey } from "@/lib/server-key";
 import {
   authorizePlugin,
+  heartbeatPlugin,
   loadForPlugin,
   markPluginSeen,
   PluginPayload,
@@ -89,6 +90,10 @@ export async function POST(request: Request) {
   const op = String(record.op ?? "");
   const key = bearerKey(request.headers.get("authorization"));
   try {
+    if (op === "heartbeat") {
+      await heartbeatPlugin(serverId, key);
+      return Response.json({ ok: true });
+    }
     await authorizePlugin(serverId, key);
     if (op === "load") {
       const loaded = await loadForPlugin(serverId);
