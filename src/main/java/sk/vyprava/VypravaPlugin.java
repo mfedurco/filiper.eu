@@ -73,6 +73,8 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
     private int lastQuestCount = -1;
     private String replayedFor;
     private long lastDbWarningAt;
+    private volatile long retryNotBefore;
+    private volatile long retryDelayMillis = 10_000;
     private final MiniMessage mini = MiniMessage.miniMessage();
 
     @Override
@@ -472,6 +474,9 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
     }
 
     private void flushGuarded() {
+        if (System.currentTimeMillis() < retryNotBefore) {
+            return;
+        }
         if (!flushing.compareAndSet(false, true)) {
             return;
         }
@@ -509,6 +514,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
         }
         DatabaseClient db = openDatabase(settings.jdbcUrl());
         if (db == null) {
+            noteFlushFailure();
             return;
         }
         String serverId = settings.serverId();
@@ -516,9 +522,11 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
             new OutboxFlusher().flush(outbox, batch -> db.push(batch, goalCatalog, serverId));
             outbox.save(outboxPath());
             loggedDown = false;
+            noteFlushSuccess();
         } catch (Exception e) {
             warnDb("Progress write to Postgres failed. Rows stay queued: " + LogSafe.message(e));
             closeDatabase();
+            noteFlushFailure();
         }
     }
 
@@ -595,11 +603,25 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
             ));
             outbox.save(outboxPath());
             loggedDown = false;
+            noteFlushSuccess();
         } catch (PortalRejectedException e) {
             warnDb("Portal rejected the server key. Rows stay queued.");
+            noteFlushFailure();
         } catch (Exception e) {
             warnDb("Progress write to the portal failed. Rows stay queued: " + LogSafe.message(e));
+            noteFlushFailure();
         }
+    }
+
+    private void noteFlushSuccess() {
+        retryNotBefore = 0;
+        retryDelayMillis = 10_000;
+    }
+
+    private void noteFlushFailure() {
+        long delay = retryDelayMillis;
+        retryNotBefore = System.currentTimeMillis() + delay;
+        retryDelayMillis = Math.min(TimeUnit.MINUTES.toMillis(5), delay * 2);
     }
 
     private void publishLanguage(UUID playerId, String language) {
@@ -761,11 +783,11 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
                 flushGuarded();
             }
         }, 10, 10, TimeUnit.SECONDS);
-        getServer().getAsyncScheduler().runAtFixedRate(this, task -> {
+        getServer().getGlobalRegionScheduler().runAtFixedRate(this, task -> {
             if (store != null) {
                 store.save();
             }
-        }, 5, 5, TimeUnit.MINUTES);
+        }, 20L * 60L * 5L, 20L * 60L * 5L);
     }
 
     private PlayerSnapshot capture(PlayerProgress player) {

@@ -168,9 +168,9 @@ export async function loadForPlugin(serverId: string): Promise<PluginLoad> {
 
 export async function pushForPlugin(serverId: string, body: unknown): Promise<void> {
   const record = asRecord(body);
-  const players = asArray(record.players).slice(0, 2000);
-  const shared = asArray(record.shared).slice(0, 2000);
-  const parties = asArray(record.parties).slice(0, 2000);
+  const players = enforceArrayLimit(record.players, 2000);
+  const shared = enforceArrayLimit(record.shared, 2000);
+  const parties = enforceArrayLimit(record.parties, 2000);
   const goals = asRecord(record.goals);
   await withTx(async (client) => {
     for (const item of players) {
@@ -272,7 +272,8 @@ async function pushPlayer(
     [playerId, expeditionId, serverId],
   );
   const quests = asRecord(snapshot.quests);
-  const keys = Object.keys(quests).slice(0, 400);
+  const keys = Object.keys(quests);
+  if (keys.length > 400) throw new PluginPayload();
   for (const key of keys) {
     if (!isStableKey(key)) throw new PluginPayload();
     const row = asRecord(quests[key]);
@@ -362,7 +363,9 @@ async function pushParty(
   if (!questKey) return;
   await ensureGoal(client, questKey, "party", goalOf(goals, questKey));
   const contributions = asRecord(snapshot.contributions);
-  for (const [mcUuid, amount] of Object.entries(contributions).slice(0, 200)) {
+  const entries = Object.entries(contributions);
+  if (entries.length > 200) throw new PluginPayload();
+  for (const [mcUuid, amount] of entries) {
     if (!UUID.test(mcUuid)) continue;
     const found = await client.query<{ id: string }>(
       "select id::text as id from players where server_id = $1 and mc_uuid = $2",
@@ -387,7 +390,9 @@ async function insertContributions(
   goalId: string,
   contributions: Record<string, unknown>,
 ): Promise<void> {
-  for (const [mcUuid, amount] of Object.entries(contributions).slice(0, 200)) {
+  const entries = Object.entries(contributions);
+  if (entries.length > 200) throw new PluginPayload();
+  for (const [mcUuid, amount] of entries) {
     if (!UUID.test(mcUuid)) continue;
     const found = await client.query<{ id: string }>(
       "select id::text as id from players where server_id = $1 and mc_uuid = $2",
@@ -474,6 +479,12 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+export function enforceArrayLimit(value: unknown, max: number): unknown[] {
+  const array = asArray(value);
+  if (array.length > max) throw new PluginPayload();
+  return array;
 }
 
 export async function rememberLanguage(serverId: string, uuid: string, language: string): Promise<void> {
