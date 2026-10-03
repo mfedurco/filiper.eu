@@ -49,7 +49,8 @@ export function ExpeditionDesk({
   const [pending, start] = useTransition();
   const group = GROUPS.find((item) => item.id === kind) ?? GROUPS[0];
   const quests = desk.quests.filter((quest) => quest.kind === group.id);
-  const adding = editing === `new:${group.id}`;
+  const locked = desk.status !== "draft";
+  const adding = !locked && editing === `new:${group.id}`;
 
   function run(action: (form: FormData) => Promise<ActionResult>, form: FormData, close = false) {
     setError(null);
@@ -77,9 +78,15 @@ export function ExpeditionDesk({
         <p className="tiny">
           Server {desk.serverLabel} · {formatSkRange(desk.startsAt, desk.endsAt)}
         </p>
+        {locked ? (
+          <p className="admin-note">
+            Polia a úlohy tejto výpravy sa nemenia. Upravíš ich v kópii, ktorá vznikne ako návrh.
+          </p>
+        ) : null}
         <MetaForm
           desk={desk}
           pending={pending}
+          locked={locked}
           onSave={(form) => run(saveMetaAction, form)}
         />
         <div className="admin-row" style={{ marginTop: 8 }}>
@@ -118,7 +125,12 @@ export function ExpeditionDesk({
         </p>
       </section>
 
-      <CopyForm desk={desk} pending={pending} onCopy={(form) => run(copyDraftAction, form)} />
+      <CopyForm
+        desk={desk}
+        pending={pending}
+        opened={locked}
+        onCopy={(form) => run(copyDraftAction, form)}
+      />
 
       <div className="desk-panes">
         <nav className="folder-tree" aria-label="Priečinky úloh">
@@ -154,13 +166,15 @@ export function ExpeditionDesk({
             <h2 id="quest-folder-title">{group.label}</h2>
             <p className="tiny">{group.text}</p>
           </div>
-          <button
-            className="admin-btn-quiet"
-            type="button"
-            onClick={() => setEditing(adding ? null : `new:${group.id}`)}
-          >
-            {adding ? "Zavrieť" : "Pridať úlohu"}
-          </button>
+          {locked ? null : (
+            <button
+              className="admin-btn-quiet"
+              type="button"
+              onClick={() => setEditing(adding ? null : `new:${group.id}`)}
+            >
+              {adding ? "Zavrieť" : "Pridať úlohu"}
+            </button>
+          )}
         </div>
         {adding ? (
           <QuestForm
@@ -175,7 +189,7 @@ export function ExpeditionDesk({
         ) : (
           <div className="quest-grid">
             {quests.map((quest) =>
-              editing === quest.id ? (
+              !locked && editing === quest.id ? (
                 <QuestForm
                   key={quest.id}
                   kind={quest.kind}
@@ -190,6 +204,7 @@ export function ExpeditionDesk({
                   key={quest.id}
                   quest={quest}
                   pending={pending}
+                  locked={locked}
                   onEdit={() => setEditing(quest.id)}
                   onRemove={() => {
                     const form = new FormData();
@@ -211,10 +226,12 @@ export function ExpeditionDesk({
 function MetaForm({
   desk,
   pending,
+  locked,
   onSave,
 }: {
   desk: AdminDesk;
   pending: boolean;
+  locked: boolean;
   onSave: (form: FormData) => void;
 }) {
   return (
@@ -227,25 +244,27 @@ function MetaForm({
       <input type="hidden" name="expeditionId" value={desk.id} />
       <label className="admin-field">
         <span>Názov</span>
-        <input name="title" defaultValue={desk.title} required maxLength={120} />
+        <input name="title" defaultValue={desk.title} required maxLength={120} disabled={locked} />
       </label>
       <label className="admin-field">
         <span>O čom výprava je</span>
-        <textarea name="description" defaultValue={desk.description} maxLength={600} />
+        <textarea name="description" defaultValue={desk.description} maxLength={600} disabled={locked} />
       </label>
       <div className="split">
         <label className="admin-field">
           <span>Od</span>
-          <input type="datetime-local" name="startsAt" defaultValue={toBratislavaInput(desk.startsAt)} />
+          <input type="datetime-local" name="startsAt" defaultValue={toBratislavaInput(desk.startsAt)} disabled={locked} />
         </label>
         <label className="admin-field">
           <span>Do</span>
-          <input type="datetime-local" name="endsAt" defaultValue={toBratislavaInput(desk.endsAt)} />
+          <input type="datetime-local" name="endsAt" defaultValue={toBratislavaInput(desk.endsAt)} disabled={locked} />
         </label>
       </div>
-      <button className="admin-btn-quiet" type="submit" disabled={pending}>
-        Uložiť termín
-      </button>
+      {locked ? null : (
+        <button className="admin-btn-quiet" type="submit" disabled={pending}>
+          Uložiť termín
+        </button>
+      )}
     </form>
   );
 }
@@ -253,16 +272,18 @@ function MetaForm({
 function CopyForm({
   desk,
   pending,
+  opened,
   onCopy,
 }: {
   desk: AdminDesk;
   pending: boolean;
+  opened: boolean;
   onCopy: (form: FormData) => void;
 }) {
   const [serverId, setServerId] = useState(desk.serverId);
   const [custom, setCustom] = useState(false);
   return (
-    <details className="air-card copy-details">
+    <details className="air-card copy-details" open={opened || undefined}>
       <summary>Kopírovať ako nový návrh</summary>
       <p className="tiny">
         Kópia dostane vlastné úlohy. Hráčsky postup sa neprenáša. Ak by sa termín prekrýval s
@@ -299,7 +320,7 @@ function CopyForm({
                 {server.label}
               </option>
             ))}
-            <option value="__new">Iný server</option>
+            {desk.allowNewServer ? <option value="__new">Iný server</option> : null}
           </select>
         </label>
         {custom ? (
@@ -319,11 +340,13 @@ function CopyForm({
 function QuestCard({
   quest,
   pending,
+  locked,
   onEdit,
   onRemove,
 }: {
   quest: AdminQuestCard;
   pending: boolean;
+  locked: boolean;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -343,6 +366,7 @@ function QuestCard({
           </span>
         ))}
       </div>
+      {locked ? null : (
       <div className="admin-row" style={{ marginTop: 14 }}>
         <button className="admin-btn-quiet" type="button" onClick={onEdit}>
           Upraviť
@@ -357,6 +381,7 @@ function QuestCard({
           </button>
         )}
       </div>
+      )}
     </article>
   );
 }

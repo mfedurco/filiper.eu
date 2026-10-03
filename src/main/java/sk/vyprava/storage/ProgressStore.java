@@ -22,30 +22,77 @@ public final class ProgressStore {
     private final Map<UUID, PlayerProgress> players = new HashMap<>();
     private final Map<String, PartyData> parties = new HashMap<>();
     private final Map<String, SharedGoalData> sharedGoals = new HashMap<>();
-    private final File playersFile;
     private final File partiesFile;
-    private final File sharedFile;
+    private String expeditionKey = "none";
+    private boolean bound;
 
     public ProgressStore(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.playersFile = new File(plugin.getDataFolder(), "data/players.yml");
         this.partiesFile = new File(plugin.getDataFolder(), "data/parties.yml");
-        this.sharedFile = new File(plugin.getDataFolder(), "data/shared.yml");
     }
 
-    public void load() {
-        players.clear();
+    private File playersFile() {
+        return new File(plugin.getDataFolder(), "data/expeditions/" + expeditionKey + "/players.yml");
+    }
+
+    private File sharedFile() {
+        return new File(plugin.getDataFolder(), "data/expeditions/" + expeditionKey + "/shared.yml");
+    }
+
+    public synchronized void load() {
         parties.clear();
+        loadParties();
+        if (!bound) {
+            return;
+        }
+        players.clear();
         sharedGoals.clear();
         loadPlayers();
-        loadParties();
         loadShared();
     }
 
-    public void save() {
-        savePlayers();
+    public synchronized void bindExpedition(String expeditionId, boolean resetPartyProgress) {
+        String next = expeditionId == null || expeditionId.isBlank() ? "none" : expeditionId;
+        if (bound && next.equals(expeditionKey)) {
+            return;
+        }
+        if (bound) {
+            savePlayers();
+            saveShared();
+        }
+        expeditionKey = next;
+        players.clear();
+        sharedGoals.clear();
+        loadPlayers();
+        loadShared();
+        bound = true;
+        if (resetPartyProgress) {
+            resetPartyQuests();
+            saveParties();
+        }
+    }
+
+    public synchronized String expeditionKey() {
+        return bound ? expeditionKey : null;
+    }
+
+    public synchronized void save() {
         saveParties();
+        if (!bound) {
+            return;
+        }
+        savePlayers();
         saveShared();
+    }
+
+    private void resetPartyQuests() {
+        for (PartyData party : parties.values()) {
+            party.setActiveQuestId(null);
+            party.setQuestDate("");
+            party.setQuestProgress(0);
+            party.setQuestCompleted(false);
+            party.contribution().clear();
+        }
     }
 
     public PlayerProgress getOrCreate(UUID uuid, String name) {
@@ -93,10 +140,10 @@ public final class ProgressStore {
     }
 
     private void loadPlayers() {
-        if (!playersFile.exists()) {
+        if (!playersFile().exists()) {
             return;
         }
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(playersFile);
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(playersFile());
         ConfigurationSection root = yaml.getConfigurationSection("players");
         if (root == null) {
             return;
@@ -115,6 +162,7 @@ public final class ProgressStore {
             p.setWeeklyKey(s.getString("weeklyKey", ""));
             p.setLongTermSeason(s.getString("longTermSeason", ""));
             p.setPartyId(s.getString("partyId", null));
+            p.setLanguage(s.getString("language", null));
             addAll(s.getStringList("completedCampaign"), p.completedCampaign());
             addAll(s.getStringList("completedChapters"), p.completedChapters());
             addAll(s.getStringList("completedDaily"), p.completedDaily());
@@ -143,6 +191,7 @@ public final class ProgressStore {
             yaml.set(path + ".weeklyKey", p.weeklyKey());
             yaml.set(path + ".longTermSeason", p.longTermSeason());
             yaml.set(path + ".partyId", p.partyId());
+            yaml.set(path + ".language", p.language());
             yaml.set(path + ".completedCampaign", new ArrayList<>(p.completedCampaign()));
             yaml.set(path + ".completedChapters", new ArrayList<>(p.completedChapters()));
             yaml.set(path + ".completedDaily", new ArrayList<>(p.completedDaily()));
@@ -157,10 +206,10 @@ public final class ProgressStore {
             writeIntMap(yaml, path + ".longTermProgress", p.longTermProgress());
         }
         try {
-            playersFile.getParentFile().mkdirs();
-            yaml.save(playersFile);
+            playersFile().getParentFile().mkdirs();
+            yaml.save(playersFile());
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Nepodarilo sa ulozit players.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save players.yml", e);
         }
     }
 
@@ -221,15 +270,15 @@ public final class ProgressStore {
             partiesFile.getParentFile().mkdirs();
             yaml.save(partiesFile);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Nepodarilo sa ulozit parties.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save parties.yml", e);
         }
     }
 
     private void loadShared() {
-        if (!sharedFile.exists()) {
+        if (!sharedFile().exists()) {
             return;
         }
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(sharedFile);
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(sharedFile());
         ConfigurationSection root = yaml.getConfigurationSection("goals");
         if (root == null) {
             return;
@@ -265,10 +314,10 @@ public final class ProgressStore {
             }
         }
         try {
-            sharedFile.getParentFile().mkdirs();
-            yaml.save(sharedFile);
+            sharedFile().getParentFile().mkdirs();
+            yaml.save(sharedFile());
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Nepodarilo sa ulozit shared.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save shared.yml", e);
         }
     }
 

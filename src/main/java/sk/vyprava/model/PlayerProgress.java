@@ -28,6 +28,7 @@ public final class PlayerProgress {
     private final Set<String> completedLongTerm = new HashSet<>();
     private final Set<String> assignedLongTerm = new HashSet<>();
     private String partyId;
+    private String language;
 
     public PlayerProgress(UUID uuid, String name) {
         this.uuid = uuid;
@@ -153,6 +154,18 @@ public final class PlayerProgress {
 
     public void setPartyId(String partyId) {
         this.partyId = partyId;
+    }
+
+    public String language() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        if (language == null || language.isBlank()) {
+            this.language = null;
+            return;
+        }
+        this.language = language.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     public int getProgress(QuestScope scope, String questId) {

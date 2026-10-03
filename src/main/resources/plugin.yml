@@ -1,4 +1,4 @@
-name: Vyprava
+name: filiper.eu-vyprava
 version: '${version}'
 main: sk.vyprava.VypravaPlugin
 api-version: '26.2'
@@ -7,7 +7,7 @@ description: Denné, týždenné, dlhodobé a spoločné ciele + kampaň pre sur
 commands:
   vyprava:
     description: Hlavný príkaz pluginu Výprava
-    usage: /vyprava <kampan|denne|tyzdenne|dlhodobe|spolocne|party|top|help>
+    usage: /vyprava [truhla|kampan|denne|tyzdenne|dlhodobe|spolocne|party|top|jazyk|prepojit|help]
     aliases: [vp, questy, quest]
 permissions:
   vyprava.use:

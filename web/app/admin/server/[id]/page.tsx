@@ -2,9 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { GenerateForm } from "@/components/admin/generate-form";
 import { ServerKeyForm } from "@/components/admin/server-key-form";
-import { adminConfigured, isAdminAuthed } from "@/lib/admin-auth";
 import { listAdminOverview } from "@/lib/admin-store";
-import { hasDatabase } from "@/lib/db";
+import { allowsServer, requireSpravca } from "@/lib/portal-accounts";
 import { formatSkRange } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +25,8 @@ export default async function ServerAdminPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  if (!adminConfigured()) redirect("/admin");
-  if (!(await isAdminAuthed())) redirect("/admin");
-  if (!hasDatabase()) redirect("/admin");
+  const account = await requireSpravca();
+  if (!account) redirect("/admin");
 
   const { id } = await params;
   let servers: Awaited<ReturnType<typeof listAdminOverview>>;
@@ -39,7 +37,7 @@ export default async function ServerAdminPage({
   }
 
   const server = servers.find((item) => item.id === id);
-  if (!server) notFound();
+  if (!server || !allowsServer(account, server.id)) notFound();
 
   const expeditions = [...server.expeditions].sort(
     (left, right) => (RANK[left.status] ?? 9) - (RANK[right.status] ?? 9),
@@ -78,7 +76,10 @@ export default async function ServerAdminPage({
         </div>
       )}
 
-      <GenerateForm servers={[{ id: server.id, label: server.label }]} />
+      <GenerateForm
+        servers={[{ id: server.id, label: server.label }]}
+        allowNewServer={account.allServers}
+      />
     </div>
   );
 }

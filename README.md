@@ -46,6 +46,8 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 /vyprava spolocne
 /vyprava party create|invite|leave
 /vyprava top
+/vyprava jazyk sk|en
+/vyprava prepojit
 /vyprava reload   # admin
 ```
 
@@ -77,13 +79,16 @@ npm run dev                  # http://127.0.0.1:43141
 Set in `.env.local` or the host, never commit the values:
 
 - `DATABASE_URL` — pooled Neon connection for the Next.js server. If it is missing, public pages stay empty instead of crashing.
-- `ADMIN_SECRET` — shared password for `/admin`. If it is missing, admin is locked and does not write.
+- `ADMIN_SECRET` — known only to the person who saves the first Google account as `spravca` with every server. It is not a shared admin password.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — the existing Google OAuth client. Sign-in starts at `/api/auth/google` and returns through `/api/auth/google/callback`. Production redirect URI is `https://vyprava.filiper.eu/api/auth/google/callback`. If either value is missing, Google sign-in stays off and `/admin` does not write.
 
 The database schema is the plugin's (`expeditions`, `quest_definitions`, server scope). This app does not create a second schema.
 
 ### Admin
 
-`/admin` is a server list: each server shows its active expedition, dates, and status. Opening a server lists that server’s expeditions. An expedition opens as two panes: a folder tree (kampaň, denné, týždenné, dlhodobé, spoločné, party) and the quest cards for the selected folder. Drafts can be generated from `web/data/matrices/` or copied onto the same or another server. Only one expedition is active per server.
+`/admin` signs in with the existing Google account. A `spravca` sees the servers they cover (`all_servers`, or the listed server ids). A `hráč` or an unknown Google account cannot administer. The first `spravca` is the signed-in Google account that still knows `ADMIN_SECRET`; that account is saved with every server. Later, a `spravca` with every server can change another already-signed-in account’s role.
+
+The screen stays a server list: each server shows its active expedition, dates, and status. Opening a server lists that server’s expeditions. An expedition opens as two panes: a folder tree (kampaň, denné, týždenné, dlhodobé, spoločné, party) and the quest cards for the selected folder. Fields and quests can be edited only while the expedition is a draft. An active or ended expedition is copied into a new draft before it changes. Drafts can be generated from `web/data/matrices/` or copied onto the same or another server. Only one expedition is active per server. Accounts live in `portal_accounts`.
 
 ### Public routes
 
@@ -94,7 +99,7 @@ The database schema is the plugin's (`expeditions`, `quest_definitions`, server 
 ### Deploy on Vercel + Cloudflare (`filiper.eu`)
 
 1. Import the repo in Vercel; **Root Directory** = `web`.
-2. Add `DATABASE_URL` and `ADMIN_SECRET` from `.env.example`.
+2. Add `DATABASE_URL`, `ADMIN_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` from `.env.example`.
 3. Deploy → note the `*.vercel.app` URL.
 4. In **Cloudflare DNS** for `filiper.eu`:
    - Type **CNAME**, Name `vyprava` (or `@` / preferred host), Target `cname.vercel-dns.com` (or the hostname Vercel shows).

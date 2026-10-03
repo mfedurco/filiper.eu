@@ -1,11 +1,11 @@
 package sk.vyprava.quest;
 
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import sk.vyprava.lang.Speaker;
 import sk.vyprava.leaderboard.LeaderboardService;
 import sk.vyprava.model.ChapterDefinition;
 import sk.vyprava.model.ObjectiveType;
@@ -17,6 +17,7 @@ import sk.vyprava.model.SharedGoalData;
 import sk.vyprava.party.PartyService;
 import sk.vyprava.reward.RewardService;
 import sk.vyprava.storage.ProgressStore;
+import sk.vyprava.storage.ProgressSync;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -36,14 +37,14 @@ public final class QuestService {
     private final RewardService rewards;
     private final PartyService parties;
     private final LeaderboardService leaderboard;
-    private final MiniMessage mini = MiniMessage.miniMessage();
-    private final String prefix;
+    private final Speaker speaker;
     private final ZoneId zone;
     private final int dailyCount;
     private final int weeklyCount;
     private final int longTermCount;
     private final int sharedCount;
     private final int partyCount;
+    private ProgressSync sync = ProgressSync.NOOP;
 
     public QuestService(
             QuestRegistry registry,
@@ -51,7 +52,7 @@ public final class QuestService {
             RewardService rewards,
             PartyService parties,
             LeaderboardService leaderboard,
-            String prefix,
+            Speaker speaker,
             ZoneId zone,
             int dailyCount,
             int weeklyCount,
@@ -64,7 +65,7 @@ public final class QuestService {
         this.rewards = rewards;
         this.parties = parties;
         this.leaderboard = leaderboard;
-        this.prefix = prefix;
+        this.speaker = speaker;
         this.zone = zone;
         this.dailyCount = dailyCount;
         this.weeklyCount = weeklyCount;
@@ -72,6 +73,25 @@ public final class QuestService {
         this.sharedCount = sharedCount;
         this.partyCount = partyCount;
         ensureSharedGoals();
+    }
+
+    public void setSync(ProgressSync sync) {
+        this.sync = sync == null ? ProgressSync.NOOP : sync;
+    }
+
+    public void onCatalogUpdated() {
+        ensureSharedGoals();
+    }
+
+    private void tell(Player player, String key, String quest, int points, String chapter) {
+        if (player == null || !player.isOnline() || key == null || key.isBlank()) {
+            return;
+        }
+        speaker.tell(player, key, Map.of(
+                "quest", quest == null ? "" : quest,
+                "points", Integer.toString(points),
+                "chapter", chapter == null ? "" : chapter
+        ));
     }
 
     public String today() {
@@ -101,6 +121,9 @@ public final class QuestService {
     }
 
     public void ensureDaily(Player player, PlayerProgress p) {
+        if (registry.dailyPool().isEmpty()) {
+            return;
+        }
         String today = today();
         if (today.equals(p.dailyDate()) && !p.assignedDaily().isEmpty()) {
             return;
@@ -112,12 +135,15 @@ public final class QuestService {
 
         List<QuestDefinition> pool = shuffledEligible(registry.dailyPool(), p.currentChapterOrder());
         pool.stream().limit(dailyCount).forEach(q -> p.assignedDaily().add(q.id()));
-        if (player.isOnline()) {
-            player.sendMessage(mini.deserialize(prefix + "<green>Nové denné úlohy! <yellow>/vyprava denne</yellow></green>"));
+        if (!p.assignedDaily().isEmpty() && player.isOnline()) {
+            speaker.tell(player, "daily-reset", Map.of());
         }
     }
 
     public void ensureWeekly(Player player, PlayerProgress p) {
+        if (registry.weeklyPool().isEmpty()) {
+            return;
+        }
         String week = weekKey();
         if (week.equals(p.weeklyKey()) && !p.assignedWeekly().isEmpty()) {
             return;
@@ -132,12 +158,15 @@ public final class QuestService {
 
         List<QuestDefinition> pool = shuffledEligible(registry.weeklyPool(), p.currentChapterOrder());
         pool.stream().limit(weeklyCount).forEach(q -> p.assignedWeekly().add(q.id()));
-        if (player.isOnline()) {
-            player.sendMessage(mini.deserialize(prefix + "<aqua>Nové týždenné úlohy! <yellow>/vyprava tyzdenne</yellow></aqua>"));
+        if (!p.assignedWeekly().isEmpty() && player.isOnline()) {
+            speaker.tell(player, "weekly-reset", Map.of());
         }
     }
 
     public void ensureLongTerm(Player player, PlayerProgress p) {
+        if (registry.longTermPool().isEmpty()) {
+            return;
+        }
         String season = seasonKey();
         if (season.equals(p.longTermSeason()) && !p.assignedLongTerm().isEmpty()) {
             return;
@@ -149,12 +178,15 @@ public final class QuestService {
 
         List<QuestDefinition> pool = shuffledEligible(registry.longTermPool(), p.currentChapterOrder());
         pool.stream().limit(longTermCount).forEach(q -> p.assignedLongTerm().add(q.id()));
-        if (player.isOnline()) {
-            player.sendMessage(mini.deserialize(prefix + "<gold>Nové dlhodobé ciele! <yellow>/vyprava dlhodobe</yellow></gold>"));
+        if (!p.assignedLongTerm().isEmpty() && player.isOnline()) {
+            speaker.tell(player, "longterm-reset", Map.of());
         }
     }
 
     public void ensureSharedGoals() {
+        if (registry.sharedPool().isEmpty()) {
+            return;
+        }
         String week = weekKey();
         boolean needsReset = store.allSharedGoals().isEmpty()
                 || store.allSharedGoals().values().stream().noneMatch(g -> week.equals(g.periodKey()));
@@ -170,8 +202,9 @@ public final class QuestService {
         int count = Math.min(sharedCount, pool.size());
         for (int i = 0; i < count; i++) {
             QuestDefinition quest = pool.get(i);
-            String id = "shared_" + week + "_" + quest.id();
-            store.putShared(new SharedGoalData(id, quest.id(), week));
+            SharedGoalData goal = new SharedGoalData(quest.id(), quest.id(), week);
+            store.putShared(goal);
+            sync.onShared(goal);
         }
     }
 
@@ -212,6 +245,15 @@ public final class QuestService {
         bump(player, ObjectiveType.ENTER_WORLD, null, null, environment.name(), 1);
     }
 
+    public void handleJoin(Player player) {
+        PlayerProgress progress = progress(player);
+        sync.onPlayer(progress);
+        if (!registry.hasQuests()) {
+            return;
+        }
+        bump(player, ObjectiveType.JOIN, null, null, null, 1);
+    }
+
     private void bump(
             Player player,
             ObjectiveType type,
@@ -220,6 +262,9 @@ public final class QuestService {
             String worldEnv,
             int amount
     ) {
+        if (!registry.hasQuests()) {
+            return;
+        }
         PlayerProgress p = progress(player);
         ChapterDefinition chapter = registry.chapterByOrder(p.currentChapterOrder()).orElse(null);
         if (chapter != null) {
@@ -287,6 +332,9 @@ public final class QuestService {
                     material != null && type.matchesMaterial(quest.targets(), material);
             case KILL_ENTITY -> entityType != null && type.matchesEntity(quest.targets(), entityType);
             case ENTER_WORLD -> worldEnv != null && type.matchesWorld(quest.targets(), worldEnv);
+            case JOIN -> quest.targets().isEmpty()
+                    || quest.targets().stream().anyMatch(target ->
+                    target.equalsIgnoreCase("ANY") || target.equalsIgnoreCase("JOIN"));
         };
     }
 
@@ -297,6 +345,7 @@ public final class QuestService {
         if (next >= quest.amount() && !p.completedCampaign().contains(quest.id())) {
             completeCampaignQuest(player, p, quest);
         }
+        sync.onPlayer(p);
     }
 
     private void addDailyProgress(Player player, PlayerProgress p, QuestDefinition quest, int amount) {
@@ -307,11 +356,9 @@ public final class QuestService {
             p.completedDaily().add(quest.id());
             p.addPoints(quest.points());
             rewards.give(player, quest.rewards());
-            player.sendMessage(mini.deserialize(prefix + "<green>Denná úloha splnená:</green> <yellow>"
-                    + quest.name() + "</yellow> <gray>(+" + quest.points() + ")</gray>"));
-            Bukkit.broadcast(mini.deserialize(prefix + "<white>" + player.getName()
-                    + "</white> splnil denne: <yellow>" + quest.name() + "</yellow>"));
+            tell(player, "quest-complete", quest.name(), quest.points(), "");
         }
+        sync.onPlayer(p);
     }
 
     private void addWeeklyProgress(Player player, PlayerProgress p, QuestDefinition quest, int amount) {
@@ -322,11 +369,9 @@ public final class QuestService {
             p.completedWeekly().add(quest.id());
             p.addPoints(quest.points());
             rewards.give(player, quest.rewards());
-            player.sendMessage(mini.deserialize(prefix + "<aqua>Týždenná úloha splnená:</aqua> <yellow>"
-                    + quest.name() + "</yellow> <gray>(+" + quest.points() + ")</gray>"));
-            Bukkit.broadcast(mini.deserialize(prefix + "<white>" + player.getName()
-                    + "</white> splnil týždenne: <yellow>" + quest.name() + "</yellow>"));
+            tell(player, "quest-complete", quest.name(), quest.points(), "");
         }
+        sync.onPlayer(p);
     }
 
     private void addLongTermProgress(Player player, PlayerProgress p, QuestDefinition quest, int amount) {
@@ -337,11 +382,9 @@ public final class QuestService {
             p.completedLongTerm().add(quest.id());
             p.addPoints(quest.points());
             rewards.give(player, quest.rewards());
-            player.sendMessage(mini.deserialize(prefix + "<gold>Dlhodobý cieľ splnený:</gold> <yellow>"
-                    + quest.name() + "</yellow> <gray>(+" + quest.points() + ")</gray>"));
-            Bukkit.broadcast(mini.deserialize(prefix + "<white>" + player.getName()
-                    + "</white> splnil dlhodobý cieľ: <yellow>" + quest.name() + "</yellow>"));
+            tell(player, "quest-complete", quest.name(), quest.points(), "");
         }
+        sync.onPlayer(p);
     }
 
     private void addPartyProgress(Player player, PartyData party, QuestDefinition quest, int amount) {
@@ -362,13 +405,18 @@ public final class QuestService {
                 mp.addPoints(quest.points());
                 if (member != null && member.isOnline()) {
                     rewards.give(member, quest.rewards());
-                    member.sendMessage(mini.deserialize(prefix + "<light_purple>Party úloha splnená:</light_purple> <yellow>"
-                            + quest.name() + "</yellow>"));
+                    speaker.tell(member, "party-complete", Map.of(
+                            "quest", quest.name(),
+                            "points", Integer.toString(quest.points())
+                    ));
                 }
             }
-            Bukkit.broadcast(mini.deserialize(prefix + "<light_purple>Partia <white>"
-                    + party.name() + "</white> dokončila: <yellow>" + quest.name() + "</yellow></light_purple>"));
+            for (var memberId : party.members()) {
+                store.find(memberId).ifPresent(sync::onPlayer);
+            }
         }
+        sync.onParty(party);
+        store.find(player.getUniqueId()).ifPresent(sync::onPlayer);
     }
 
     private void addSharedProgress(Player player, SharedGoalData goal, QuestDefinition quest, int amount) {
@@ -390,20 +438,21 @@ public final class QuestService {
                 mp.addPoints(quest.points());
                 if (member != null && member.isOnline()) {
                     rewards.give(member, quest.rewards());
-                    member.sendMessage(mini.deserialize(prefix + "<green>Spoločný cieľ splnený:</green> <yellow>"
-                            + quest.name() + "</yellow>"));
+                    tell(member, "shared-complete", quest.name(), quest.points(), "");
                 }
             }
-            Bukkit.broadcast(mini.deserialize(prefix + "<green><bold>Spoločný cieľ dokončený!</bold></green> <yellow>"
-                    + quest.name() + "</yellow>"));
+            for (UUID contributorId : goal.contributions().keySet()) {
+                store.find(contributorId).ifPresent(sync::onPlayer);
+            }
         }
+        sync.onShared(goal);
+        store.find(player.getUniqueId()).ifPresent(sync::onPlayer);
     }
 
     private void completeCampaignQuest(Player player, PlayerProgress p, QuestDefinition quest) {
         p.completedCampaign().add(quest.id());
         p.addPoints(quest.points());
-        player.sendMessage(mini.deserialize(prefix + "<green>Úloha splnená:</green> <yellow>"
-                + quest.name() + "</yellow> <gray>(+" + quest.points() + " bodov)</gray>"));
+        tell(player, "quest-complete", quest.name(), quest.points(), "");
         registry.chapterById(quest.chapterId()).ifPresent(chapter -> tryCompleteChapter(player, p, chapter));
     }
 
@@ -415,14 +464,11 @@ public final class QuestService {
         p.completedChapters().add(chapter.id());
         p.addPoints(chapter.milestonePoints());
         rewards.give(player, chapter.milestoneRewards());
-        player.sendMessage(mini.deserialize(prefix + "<gold><bold>Kapitola dokončená!</bold></gold> <gray>"
-                + chapter.name() + " — " + chapter.milestoneName() + "</gray>"));
-        Bukkit.broadcast(mini.deserialize(prefix + "<gold>" + player.getName()
-                + "</gold> dokončil kapitolu <yellow>" + chapter.name() + "</yellow>!"));
+        tell(player, "chapter-complete", "", chapter.milestonePoints(), chapter.name());
         int next = chapter.order() + 1;
         if (registry.chapterByOrder(next).isPresent()) {
             p.setCurrentChapterOrder(next);
-            player.sendMessage(mini.deserialize(prefix + "<aqua>Odomknutá nová kapitola!</aqua> <yellow>/vyprava kampan</yellow>"));
+            speaker.tell(player, "chapter-unlocked", Map.of());
         }
     }
 

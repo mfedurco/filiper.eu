@@ -14,10 +14,25 @@ public enum ObjectiveType {
     CRAFT_ITEM,
     SMELT_ITEM,
     PICKUP_ITEM,
-    ENTER_WORLD;
+    ENTER_WORLD,
+    JOIN;
 
     public static ObjectiveType from(String raw) {
         return ObjectiveType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+    }
+
+    public static ObjectiveType fromTracking(String raw) {
+        return switch (raw) {
+            case "break_block" -> BREAK_BLOCK;
+            case "place_block" -> PLACE_BLOCK;
+            case "pickup" -> PICKUP_ITEM;
+            case "craft" -> CRAFT_ITEM;
+            case "smelt" -> SMELT_ITEM;
+            case "kill" -> KILL_ENTITY;
+            case "join" -> JOIN;
+            case "enter_world" -> ENTER_WORLD;
+            default -> throw new IllegalArgumentException("Unknown tracking type: " + raw);
+        };
     }
 
     public boolean matchesMaterial(List<String> targets, Material material) {

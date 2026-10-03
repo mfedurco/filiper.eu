@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ExpeditionDesk } from "@/components/admin/desk";
-import { adminConfigured, isAdminAuthed } from "@/lib/admin-auth";
 import { loadDesk } from "@/lib/admin-store";
-import { hasDatabase } from "@/lib/db";
+import { allowsServer, requireSpravca } from "@/lib/portal-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +13,8 @@ export default async function ExpeditionPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ oznam?: string }>;
 }) {
-  if (!adminConfigured()) redirect("/admin");
-  if (!(await isAdminAuthed())) redirect("/admin");
-  if (!hasDatabase()) redirect("/admin");
+  const account = await requireSpravca();
+  if (!account) redirect("/admin");
 
   const { id } = await params;
   const query = await searchParams;
@@ -26,7 +24,12 @@ export default async function ExpeditionPage({
   } catch {
     return <p className="admin-error">Výpravu sa nepodarilo načítať.</p>;
   }
-  if (!desk) notFound();
+  if (!desk || !allowsServer(account, desk.serverId)) notFound();
+  desk = {
+    ...desk,
+    allowNewServer: account.allServers,
+    servers: account.allServers ? desk.servers : desk.servers.filter((server) => allowsServer(account, server.id)),
+  };
 
   return (
     <div>

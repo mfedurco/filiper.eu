@@ -58,7 +58,7 @@ public final class WebApiServer {
         server.createContext("/api/parties", this::parties);
         server.setExecutor(Executors.newCachedThreadPool());
         server.start();
-        logger.info("Výprava Web API beží na http://" + bind + ":" + port + "/api/health");
+        logger.info("Vyprava web API listening on http://" + bind + ":" + port + "/api/health");
     }
 
     public void stop() {

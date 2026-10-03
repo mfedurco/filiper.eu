@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { readSession } from "@/lib/google-auth";
 import { claimProfile, isPlayerUuid, saveProfileAbout } from "@/lib/player-profile";
+import { rememberSignedIn } from "@/lib/portal-accounts";
 import { isServerId } from "@/lib/portal";
 
 export async function claimProfileAction(formData: FormData) {
@@ -14,6 +15,11 @@ export async function claimProfileAction(formData: FormData) {
   const linked = await claimProfile(session.sub, code);
   if (!linked || linked.serverId !== serverId || linked.uuid !== uuid) {
     redirect(profilePath(serverId, uuid, "kod"));
+  }
+  try {
+    await rememberSignedIn(session);
+  } catch {
+    // The Minecraft profile is already linked. The account row is created on the next Google visit.
   }
   redirect(profilePath(serverId, uuid, "prepojene"));
 }

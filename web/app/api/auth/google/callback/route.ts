@@ -7,6 +7,7 @@ import {
   takeState,
   writeSession,
 } from "@/lib/google-auth";
+import { rememberSignedIn } from "@/lib/portal-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,11 @@ export async function GET(request: Request) {
   const session = await exchangeCode(origin, code);
   if (!session) return failed;
   await writeSession(session);
+  try {
+    await rememberSignedIn(session);
+  } catch {
+    // The Google session is already stored. Admin retries the account row on the next visit.
+  }
   const nextPath = safeNext(encodedNext ? decodeURIComponent(encodedNext) : null);
   return NextResponse.redirect(new URL(nextPath, origin));
 }

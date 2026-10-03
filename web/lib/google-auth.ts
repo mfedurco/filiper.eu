@@ -32,8 +32,10 @@ export function requestOrigin(request: Request): string {
 }
 
 export function safeNext(value: string | null): string {
-  if (!value || !value.startsWith("/hrac/") || value.startsWith("//") || value.includes("\\")) return "/rebricek";
-  return value;
+  if (!value || value.startsWith("//") || value.includes("\\") || value.includes("?")) return "/rebricek";
+  if (value === "/admin" || value.startsWith("/admin/")) return value;
+  if (value.startsWith("/hrac/")) return value;
+  return "/rebricek";
 }
 
 export function googleStartUrl(origin: string, state: string): string {

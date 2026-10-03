@@ -1,26 +1,28 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import {
-  ADMIN_COOKIE,
-  adminConfigured,
-  isAdminAuthed,
-  secretMatches,
-  sessionToken,
-} from "@/lib/admin-auth";
+import { adminConfigured, secretMatches } from "@/lib/admin-auth";
 import { dbQuery, hasDatabase, publicDbError } from "@/lib/db";
+import { clearSession, googleConfigured, readSession } from "@/lib/google-auth";
 import {
   copyExpedition,
   createGeneratedDraft,
   endExpedition,
+  expeditionAccess,
   removeQuest,
   saveExpeditionMeta,
   saveQuest,
   startExpedition,
 } from "@/lib/admin-store";
 import { isServerId } from "@/lib/portal";
+import {
+  allowsServer,
+  bootstrapSpravca,
+  requireSpravca,
+  setAccountRole,
+  type PortalRole,
+} from "@/lib/portal-accounts";
 import { ensureServerKeyColumn, generateServerKey, hashServerKey } from "@/lib/server-key";
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
@@ -33,11 +35,21 @@ function fail(error: unknown): ActionResult {
   return { ok: false, message: publicDbError() };
 }
 
-async function gate(): Promise<ActionResult | null> {
-  if (!adminConfigured()) return { ok: false, message: "Admin je zamknutý." };
-  if (!(await isAdminAuthed())) return { ok: false, message: "Najprv zadaj heslo admina." };
+async function gateServer(serverId: string): Promise<ActionResult | null> {
+  if (!googleConfigured()) return { ok: false, message: "Prihlásenie cez Google nie je nastavené." };
   if (!hasDatabase()) return { ok: false, message: "Databáza nie je pripojená." };
+  const account = await requireSpravca();
+  if (!account) return { ok: false, message: "Tento Google účet výpravy nespravuje." };
+  if (!isServerId(serverId) || !allowsServer(account, serverId)) {
+    return { ok: false, message: "Tento server nespravuješ." };
+  }
   return null;
+}
+
+async function gateExpedition(id: string): Promise<ActionResult | null> {
+  const access = await expeditionAccess(id);
+  if (!access) return { ok: false, message: "Výprava sa nenašla." };
+  return gateServer(access.serverId);
 }
 
 function refresh() {
@@ -45,32 +57,53 @@ function refresh() {
   revalidatePath("/admin");
 }
 
-export async function loginAction(formData: FormData) {
-  if (!adminConfigured()) redirect("/admin");
-  const password = String(formData.get("password") ?? "");
+export async function bootstrapAction(formData: FormData) {
+  const session = await readSession();
+  if (!session || !adminConfigured()) redirect("/admin");
+  const password = String(formData.get("secret") ?? "");
   if (!secretMatches(password)) redirect("/admin?chyba=1");
-  const token = sessionToken();
-  if (!token) redirect("/admin");
-  const jar = await cookies();
-  jar.set(ADMIN_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 12,
-  });
+  try {
+    await bootstrapSpravca(session);
+  } catch {
+    redirect("/admin?chyba=1");
+  }
   redirect("/admin");
 }
 
+export async function setRoleAction(formData: FormData) {
+  const actor = await requireSpravca();
+  if (!actor?.allServers) redirect("/admin");
+  const role = String(formData.get("role") ?? "");
+  if (role !== "hrac" && role !== "spravca") redirect("/admin?oznam=Rola%20nie%20je%20v%20poriadku.");
+  const serverIds = String(formData.get("serverIds") ?? "")
+    .split(/[\s,]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+  try {
+    await setAccountRole({
+      actorSub: actor.googleSub,
+      targetSub: String(formData.get("targetSub") ?? ""),
+      role: role as PortalRole,
+      allServers: formData.get("allServers") === "on",
+      serverIds,
+    });
+  } catch (error) {
+    const result = fail(error);
+    redirect(`/admin?oznam=${encodeURIComponent(result.ok ? "Rolu sa nepodarilo uložiť." : result.message)}`);
+  }
+  refresh();
+  redirect("/admin?oznam=Rola%20je%20ulo%C5%BEen%C3%A1.");
+}
+
 export async function logoutAction() {
-  const jar = await cookies();
-  jar.set(ADMIN_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  await clearSession();
   redirect("/admin");
 }
 
 export async function generateDraftAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
-  if (denied) return denied;
   const serverId = String(formData.get("serverId") ?? "").trim();
+  const denied = await gateServer(serverId);
+  if (denied) return denied;
   if (!isServerId(serverId)) {
     return { ok: false, message: "Vyber server, alebo napíš nový názov z písmen a čísiel." };
   }
@@ -85,10 +118,12 @@ export async function generateDraftAction(formData: FormData): Promise<ActionRes
 }
 
 export async function copyDraftAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
-  if (denied) return denied;
   const sourceId = String(formData.get("expeditionId") ?? "");
   const serverId = String(formData.get("serverId") ?? "").trim();
+  const deniedSource = await gateExpedition(sourceId);
+  if (deniedSource) return deniedSource;
+  const deniedTarget = await gateServer(serverId);
+  if (deniedTarget) return deniedTarget;
   const title = String(formData.get("title") ?? "");
   if (!isServerId(serverId)) {
     return { ok: false, message: "Cieľový server potrebuje názov z písmen a čísiel." };
@@ -104,7 +139,7 @@ export async function copyDraftAction(formData: FormData): Promise<ActionResult>
 }
 
 export async function saveMetaAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
+  const denied = await gateExpedition(String(formData.get("expeditionId") ?? ""));
   if (denied) return denied;
   try {
     await saveExpeditionMeta({
@@ -122,7 +157,7 @@ export async function saveMetaAction(formData: FormData): Promise<ActionResult> 
 }
 
 export async function startAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
+  const denied = await gateExpedition(String(formData.get("expeditionId") ?? ""));
   if (denied) return denied;
   try {
     await startExpedition(String(formData.get("expeditionId") ?? ""));
@@ -134,7 +169,7 @@ export async function startAction(formData: FormData): Promise<ActionResult> {
 }
 
 export async function endAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
+  const denied = await gateExpedition(String(formData.get("expeditionId") ?? ""));
   if (denied) return denied;
   try {
     await endExpedition(String(formData.get("expeditionId") ?? ""));
@@ -146,7 +181,7 @@ export async function endAction(formData: FormData): Promise<ActionResult> {
 }
 
 export async function saveQuestAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
+  const denied = await gateExpedition(String(formData.get("expeditionId") ?? ""));
   if (denied) return denied;
   const expeditionId = String(formData.get("expeditionId") ?? "");
   const questId = String(formData.get("questId") ?? "").trim();
@@ -160,7 +195,7 @@ export async function saveQuestAction(formData: FormData): Promise<ActionResult>
 }
 
 export async function rotateServerKeyAction(formData: FormData): Promise<KeyResult> {
-  const denied = await gate();
+  const denied = await gateServer(String(formData.get("serverId") ?? "").trim());
   if (denied) return { ok: false, message: denied.message };
   const serverId = String(formData.get("serverId") ?? "").trim();
   if (!isServerId(serverId)) {
@@ -184,7 +219,7 @@ export async function rotateServerKeyAction(formData: FormData): Promise<KeyResu
 }
 
 export async function removeQuestAction(formData: FormData): Promise<ActionResult> {
-  const denied = await gate();
+  const denied = await gateExpedition(String(formData.get("expeditionId") ?? ""));
   if (denied) return denied;
   try {
     await removeQuest(

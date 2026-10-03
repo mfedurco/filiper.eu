@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { withTx } from "@/lib/db";
+import { dbQuery, withTx } from "@/lib/db";
 import { isServerId } from "@/lib/portal";
 import { mergeNameNote } from "@/lib/name-note";
 import { ensurePlayerProfileColumns } from "@/lib/player-profile";
@@ -219,8 +219,8 @@ async function pushPlayer(
   const prior = existing.rows[0];
   const nameNote = mergeNameNote(prior?.name_note, String(snapshot.nameNote ?? ""), prior?.name, nextName);
   const player = await client.query<{ id: string }>(
-    `insert into players (mc_uuid, name, chapter, total_points, weekly_points, party_id, server_id, name_note, updated_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, now())
+    `insert into players (mc_uuid, name, chapter, total_points, weekly_points, party_id, server_id, name_note, language, updated_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, nullif($9, ''), now())
      on conflict (server_id, mc_uuid) do update set
        name = excluded.name,
        chapter = excluded.chapter,
@@ -228,6 +228,7 @@ async function pushPlayer(
        weekly_points = excluded.weekly_points,
        party_id = excluded.party_id,
        name_note = excluded.name_note,
+       language = coalesce(nullif($9, ''), players.language),
        updated_at = now()
      returning id::text as id`,
     [
@@ -239,6 +240,7 @@ async function pushPlayer(
       blankToNull(snapshot.partyId),
       serverId,
       nameNote,
+      languageOf(snapshot.language),
     ],
   );
   const playerId = player.rows[0]?.id;
@@ -466,6 +468,24 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+export async function rememberLanguage(serverId: string, uuid: string, language: string): Promise<void> {
+  const chosen = language === "sk" || language === "en" ? language : "";
+  if (!isServerId(serverId) || !/^[0-9a-f-]{36}$/i.test(uuid) || !chosen) {
+    throw new PluginPayload();
+  }
+  await ensurePlayerProfileColumns();
+  await dbQuery(
+    `update players set language = $3, updated_at = now()
+     where server_id = $1 and mc_uuid = $2`,
+    [serverId, uuid, chosen],
+  );
+}
+
+function languageOf(value: unknown): string {
+  const language = String(value ?? "").trim().toLowerCase();
+  return language === "sk" || language === "en" ? language : "";
 }
 
 function integer(value: unknown, fallback: number): number {

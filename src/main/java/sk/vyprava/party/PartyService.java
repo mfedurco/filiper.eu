@@ -2,18 +2,22 @@ package sk.vyprava.party;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import sk.vyprava.lang.Speaker;
 import sk.vyprava.model.PartyData;
 import sk.vyprava.model.PlayerProgress;
 import sk.vyprava.storage.ProgressStore;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 public final class PartyService {
     private final ProgressStore store;
+    private final Speaker speaker;
 
-    public PartyService(ProgressStore store) {
+    public PartyService(ProgressStore store, Speaker speaker) {
         this.store = store;
+        this.speaker = speaker;
     }
 
     public Optional<PartyData> findFor(UUID playerId) {
@@ -69,7 +73,7 @@ public final class PartyService {
             party.setLeader(newLeader);
             Player online = Bukkit.getPlayer(newLeader);
             if (online != null) {
-                online.sendMessage("Si novy lider partie " + party.name());
+                speaker.tell(online, "party-new-leader", Map.of("party", party.name()));
             }
         }
     }

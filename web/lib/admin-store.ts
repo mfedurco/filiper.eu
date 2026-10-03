@@ -65,6 +65,7 @@ export type AdminDesk = {
   endsAt: string | null;
   quests: AdminQuestCard[];
   servers: { id: string; label: string }[];
+  allowNewServer: boolean;
 };
 
 function iso(value: unknown): string | null {
@@ -195,6 +196,7 @@ export async function loadDesk(expeditionId: string): Promise<AdminDesk | null> 
     startsAt: iso(expedition.starts_at),
     endsAt: iso(expedition.ends_at),
     servers,
+    allowNewServer: false,
     quests: quests.map((quest) => {
       const filters = quest.filter_values ?? [];
       return {
@@ -395,6 +397,25 @@ export async function copyExpedition(
   });
 }
 
+export async function expeditionAccess(id: string): Promise<{ serverId: string; status: string } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const rows = await dbQuery<{ server_id: string; status: string }>(
+    "select server_id, status::text as status from expeditions where id = $1",
+    [id],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return { serverId: row.server_id, status: row.status };
+}
+
+async function requireDraft(id: string) {
+  const access = await expeditionAccess(id);
+  if (!access) throw new Error("Výprava sa nenašla.");
+  if (access.status !== "draft") {
+    throw new Error("Táto výprava nie je návrh. Polia a úlohy sa menia len v kópii.");
+  }
+}
+
 export async function saveExpeditionMeta(input: {
   id: string;
   title: string;
@@ -408,6 +429,7 @@ export async function saveExpeditionMeta(input: {
   const ends = bratislavaSql(input.endsAt);
   if (input.startsAt.trim() && !starts) throw new Error("Dátum od nie je platný.");
   if (input.endsAt.trim() && !ends) throw new Error("Dátum do nie je platný.");
+  await requireDraft(input.id);
   await dbQuery(
     `update expeditions
      set title = $2,
@@ -562,6 +584,7 @@ export function parseQuestForm(form: FormData) {
 
 export async function saveQuest(expeditionId: string, questId: string | null, form: FormData) {
   const parsed = parseQuestForm(form);
+  await requireDraft(expeditionId);
   await withTx(async (client) => {
     const found = await client.query("select 1 from expeditions where id = $1", [expeditionId]);
     if (!found.rowCount) throw new Error("Výprava sa nenašla.");
@@ -627,6 +650,7 @@ export async function saveQuest(expeditionId: string, questId: string | null, fo
 }
 
 export async function removeQuest(expeditionId: string, questId: string) {
+  await requireDraft(expeditionId);
   const removed = await dbQuery(
     "delete from quest_definitions where expedition_id = $1 and id = $2 returning id",
     [expeditionId, questId],

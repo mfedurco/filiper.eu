@@ -3,8 +3,14 @@
 import { useState, useTransition } from "react";
 import { generateDraftAction } from "@/lib/admin-actions";
 
-export function GenerateForm({ servers }: { servers: { id: string; label: string }[] }) {
-  const [custom, setCustom] = useState(servers.length === 0);
+export function GenerateForm({
+  servers,
+  allowNewServer = false,
+}: {
+  servers: { id: string; label: string }[];
+  allowNewServer?: boolean;
+}) {
+  const [custom, setCustom] = useState(allowNewServer && servers.length === 0);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -38,7 +44,7 @@ export function GenerateForm({ servers }: { servers: { id: string; label: string
               {server.label}
             </option>
           ))}
-          <option value="__new">Nový server</option>
+          {allowNewServer ? <option value="__new">Nový server</option> : null}
         </select>
       </label>
       {custom ? (

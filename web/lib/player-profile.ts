@@ -16,6 +16,7 @@ export function ensurePlayerProfileColumns(): Promise<void> {
         "alter table players add column if not exists google_sub text",
         "alter table players add column if not exists claim_code_hash text",
         "alter table players add column if not exists claim_expires_at timestamptz",
+        "alter table players add column if not exists language text",
       ];
       for (const statement of statements) {
         await dbQuery(statement);
