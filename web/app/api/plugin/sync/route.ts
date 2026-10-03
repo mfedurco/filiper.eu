@@ -91,8 +91,9 @@ export async function POST(request: Request) {
   try {
     await authorizePlugin(serverId, key);
     if (op === "load") {
+      const loaded = await loadForPlugin(serverId);
       await markPluginSeen(serverId, false);
-      return Response.json(await loadForPlugin(serverId));
+      return Response.json(loaded);
     }
     if (op === "push") {
       await pushForPlugin(serverId, body);
