@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbQuery = vi.fn();
+const { dbQuery } = vi.hoisted(() => ({ dbQuery: vi.fn() }));
 vi.mock("@/lib/db", () => ({ dbQuery }));
 
 import { fixedWindow, rateLimitKey, sharedRateLimit } from "./rate-limit";
