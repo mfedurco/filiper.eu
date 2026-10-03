@@ -18,12 +18,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.logging.Logger;
 
 /**
@@ -36,15 +38,21 @@ public final class WebApiServer {
     private final Logger logger;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final String apiToken;
+    private final String corsOrigin;
     private HttpServer server;
+    private ExecutorService executor;
 
     public WebApiServer(QuestService quests, FileConfiguration config, Logger logger) {
         this.quests = quests;
         this.logger = logger;
-        this.apiToken = config.getString("web.api-token", "");
+        this.apiToken = config.getString("web.api-token", "").trim();
+        this.corsOrigin = config.getString("web.cors-origin", "").trim();
     }
 
     public void start(int port, String bind) throws IOException {
+        if (apiToken.isBlank()) {
+            throw new IOException("web.api-token is required when the legacy web API is enabled.");
+        }
         server = HttpServer.create(new InetSocketAddress(bind, port), 0);
         server.createContext("/api/health", this::health);
         server.createContext("/api/campaign", this::campaign);
@@ -56,7 +64,8 @@ public final class WebApiServer {
         server.createContext("/api/leaderboard", this::leaderboard);
         server.createContext("/api/players", this::players);
         server.createContext("/api/parties", this::parties);
-        server.setExecutor(Executors.newCachedThreadPool());
+        executor = Executors.newFixedThreadPool(4);
+        server.setExecutor(executor);
         server.start();
         logger.info("Vyprava web API listening on http://" + bind + ":" + port + "/api/health");
     }
@@ -66,17 +75,44 @@ public final class WebApiServer {
             server.stop(0);
             server = null;
         }
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
     }
 
     private boolean authorized(HttpExchange exchange) {
-        if (apiToken == null || apiToken.isBlank()) {
-            return true;
-        }
         String header = exchange.getRequestHeaders().getFirst("X-Vyprava-Token");
-        return apiToken.equals(header);
+        if (header == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                apiToken.getBytes(StandardCharsets.UTF_8),
+                header.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    private boolean allowGet(HttpExchange exchange) throws IOException {
+        String method = exchange.getRequestMethod();
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            writeJson(exchange, 204, Map.of());
+            return false;
+        }
+        if (!"GET".equalsIgnoreCase(method)) {
+            writeJson(exchange, 405, Map.of("error", "method_not_allowed"));
+            return false;
+        }
+        if (!authorized(exchange)) {
+            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+            return false;
+        }
+        return true;
     }
 
     private void health(HttpExchange exchange) throws IOException {
+        if (!allowGet(exchange)) {
+            return;
+        }
         writeJson(exchange, 200, Map.of(
                 "ok", true,
                 "plugin", "Vyprava",
@@ -86,8 +122,7 @@ public final class WebApiServer {
     }
 
     private void campaign(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         List<Map<String, Object>> chapters = new ArrayList<>();
@@ -109,16 +144,14 @@ public final class WebApiServer {
     }
 
     private void daily(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         writeJson(exchange, 200, Map.of("pool", questMaps(new ArrayList<>(quests.registry().dailyPool().values()))));
     }
 
     private void weekly(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         writeJson(exchange, 200, Map.of(
@@ -128,8 +161,7 @@ public final class WebApiServer {
     }
 
     private void longterm(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         writeJson(exchange, 200, Map.of(
@@ -139,8 +171,7 @@ public final class WebApiServer {
     }
 
     private void shared(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         List<Map<String, Object>> goals = new ArrayList<>();
@@ -181,16 +212,14 @@ public final class WebApiServer {
     }
 
     private void partyQuests(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         writeJson(exchange, 200, Map.of("pool", questMaps(new ArrayList<>(quests.registry().partyPool().values()))));
     }
 
     private void leaderboard(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -207,8 +236,7 @@ public final class WebApiServer {
     }
 
     private void players(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -241,8 +269,7 @@ public final class WebApiServer {
     }
 
     private void parties(HttpExchange exchange) throws IOException {
-        if (!authorized(exchange)) {
-            writeJson(exchange, 401, Map.of("error", "unauthorized"));
+        if (!allowGet(exchange)) {
             return;
         }
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -302,9 +329,14 @@ public final class WebApiServer {
     private void writeJson(HttpExchange exchange, int status, Object body) throws IOException {
         Headers headers = exchange.getResponseHeaders();
         headers.set("Content-Type", "application/json; charset=utf-8");
-        headers.set("Access-Control-Allow-Origin", "*");
+        String requestOrigin = exchange.getRequestHeaders().getFirst("Origin");
+        if (!corsOrigin.isBlank() && corsOrigin.equals(requestOrigin)) {
+            headers.set("Access-Control-Allow-Origin", corsOrigin);
+            headers.set("Vary", "Origin");
+        }
         headers.set("Access-Control-Allow-Headers", "Content-Type, X-Vyprava-Token");
         headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+        headers.set("Cache-Control", "no-store");
         if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
             exchange.sendResponseHeaders(204, -1);
             exchange.close();

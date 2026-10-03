@@ -483,7 +483,7 @@ public final class VypravaPlugin extends JavaPlugin implements ProgressSync, Spe
             Thread.currentThread().setContextClassLoader(previous);
             flushing.set(false);
             if (outbox != null && outbox.hasPending() && databaseEnabled()) {
-                getServer().getAsyncScheduler().runDelayed(this, task -> flushGuarded(), 1, TimeUnit.SECONDS);
+                getServer().getAsyncScheduler().runDelayed(this, task -> flushGuarded(), 10, TimeUnit.SECONDS);
             }
         }
     }

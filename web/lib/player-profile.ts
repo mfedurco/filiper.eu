@@ -10,17 +10,10 @@ let ready: Promise<void> | null = null;
 export function ensurePlayerProfileColumns(): Promise<void> {
   if (!ready) {
     ready = (async () => {
-      const statements = [
-        "alter table players add column if not exists name_note text not null default ''",
-        "alter table players add column if not exists about text not null default ''",
-        "alter table players add column if not exists google_sub text",
-        "alter table players add column if not exists claim_code_hash text",
-        "alter table players add column if not exists claim_expires_at timestamptz",
-        "alter table players add column if not exists language text",
-      ];
-      for (const statement of statements) {
-        await dbQuery(statement);
-      }
+      await dbQuery(
+        `select name_note, about, google_sub, claim_code_hash, claim_expires_at, language
+         from players limit 0`,
+      );
     })().catch((error: unknown) => {
       ready = null;
       throw error;
@@ -104,26 +97,27 @@ export async function issueClaimCode(serverId: string, uuid: string, name: strin
   );
 }
 
-export async function claimProfile(googleSub: string, code: string): Promise<{ serverId: string; uuid: string } | null> {
+export async function claimProfile(
+  googleSub: string,
+  serverId: string,
+  uuid: string,
+  code: string,
+): Promise<boolean> {
   const normalized = code.trim().toUpperCase();
-  if (!googleSub || !/^[A-Z2-9]{8}$/.test(normalized)) return null;
+  if (!googleSub || !isServerId(serverId) || !isPlayerUuid(uuid) || !/^[A-Z2-9]{8}$/.test(normalized)) {
+    return false;
+  }
   await ensurePlayerProfileColumns();
   const hash = hashClaimCode(normalized);
-  const rows = await dbQuery<{ server_id: string; mc_uuid: string; claim_code_hash: string }>(
-    `select server_id, mc_uuid, claim_code_hash
-     from players
-     where claim_code_hash = $1 and claim_expires_at > now()`,
-    [hash],
-  );
-  const row = rows[0];
-  if (!row || !sameHash(row.claim_code_hash, hash)) return null;
-  await dbQuery(
+  const rows = await dbQuery<{ id: string; claim_code_hash: string }>(
     `update players
-     set google_sub = $3, claim_code_hash = null, claim_expires_at = null, updated_at = now()
-     where server_id = $1 and mc_uuid = $2 and claim_code_hash = $4`,
-    [row.server_id, row.mc_uuid, googleSub, hash],
+     set google_sub = $4, claim_code_hash = null, claim_expires_at = null, updated_at = now()
+     where server_id = $1 and mc_uuid = $2
+       and claim_code_hash = $3 and claim_expires_at > now()
+     returning id::text as id, $3::text as claim_code_hash`,
+    [serverId, uuid, hash, googleSub],
   );
-  return { serverId: row.server_id, uuid: row.mc_uuid };
+  return rows.length === 1 && sameHash(rows[0].claim_code_hash, hash);
 }
 
 export async function saveProfileAbout(googleSub: string, serverId: string, uuid: string, about: string): Promise<boolean> {

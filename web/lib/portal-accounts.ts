@@ -36,23 +36,11 @@ let ready: Promise<void> | null = null;
 export function ensurePortalSchema(): Promise<void> {
   if (!ready) {
     ready = (async () => {
-      const statements = [
-        "alter table players add column if not exists language text",
-        `create table if not exists portal_accounts (
-           google_sub text primary key,
-           email text not null default '',
-           display_name text not null default '',
-           role text not null default 'hrac',
-           all_servers boolean not null default false,
-           server_ids text[] not null default '{}',
-           created_at timestamptz not null default now(),
-           updated_at timestamptz not null default now(),
-           constraint portal_accounts_role check (role in ('hrac', 'spravca'))
-         )`,
-      ];
-      for (const statement of statements) {
-        await dbQuery(statement);
-      }
+      await dbQuery("select language from players limit 0");
+      await dbQuery(
+        `select google_sub, email, display_name, role, all_servers, server_ids
+         from portal_accounts limit 0`,
+      );
     })().catch((error: unknown) => {
       ready = null;
       throw error;

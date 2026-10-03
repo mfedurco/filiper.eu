@@ -97,7 +97,7 @@ public final class PortalClient implements AutoCloseable {
                 .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
                 .build();
-        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
         int status = response.statusCode();
         if (status == 401 || status == 403) {
             throw new PortalRejectedException();
@@ -105,8 +105,12 @@ public final class PortalClient implements AutoCloseable {
         if (status / 100 != 2) {
             throw new IOException("Portal returned HTTP " + status);
         }
-        String payload = response.body();
-        if (payload == null || payload.isBlank()) {
+        byte[] bytes = response.body();
+        if (bytes != null && bytes.length > 2_000_000) {
+            throw new IOException("Portal response is too large.");
+        }
+        String payload = bytes == null ? "" : new String(bytes, StandardCharsets.UTF_8);
+        if (payload.isBlank()) {
             return new JsonObject();
         }
         JsonElement parsed = JsonParser.parseString(payload);

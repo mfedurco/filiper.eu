@@ -9,19 +9,22 @@ import sk.vyprava.model.SharedGoalData;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public final class ProgressStore {
     private final JavaPlugin plugin;
-    private final Map<UUID, PlayerProgress> players = new HashMap<>();
-    private final Map<String, PartyData> parties = new HashMap<>();
-    private final Map<String, SharedGoalData> sharedGoals = new HashMap<>();
+    private final Map<UUID, PlayerProgress> players = new ConcurrentHashMap<>();
+    private final Map<String, PartyData> parties = new ConcurrentHashMap<>();
+    private final Map<String, SharedGoalData> sharedGoals = new ConcurrentHashMap<>();
     private final File partiesFile;
     private String expeditionKey = "none";
     private boolean bound;
@@ -206,8 +209,7 @@ public final class ProgressStore {
             writeIntMap(yaml, path + ".longTermProgress", p.longTermProgress());
         }
         try {
-            playersFile().getParentFile().mkdirs();
-            yaml.save(playersFile());
+            saveAtomic(yaml, playersFile());
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save players.yml", e);
         }
@@ -267,8 +269,7 @@ public final class ProgressStore {
             }
         }
         try {
-            partiesFile.getParentFile().mkdirs();
-            yaml.save(partiesFile);
+            saveAtomic(yaml, partiesFile);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save parties.yml", e);
         }
@@ -314,8 +315,7 @@ public final class ProgressStore {
             }
         }
         try {
-            sharedFile().getParentFile().mkdirs();
-            yaml.save(sharedFile());
+            saveAtomic(yaml, sharedFile());
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save shared.yml", e);
         }
@@ -339,6 +339,26 @@ public final class ProgressStore {
     private static void writeIntMap(YamlConfiguration yaml, String path, Map<String, Integer> map) {
         for (Map.Entry<String, Integer> e : map.entrySet()) {
             yaml.set(path + "." + e.getKey(), e.getValue());
+        }
+    }
+
+    private static void saveAtomic(YamlConfiguration yaml, File file) throws IOException {
+        File parent = file.getParentFile();
+        if (parent != null) {
+            Files.createDirectories(parent.toPath());
+        }
+        java.nio.file.Path path = file.toPath();
+        java.nio.file.Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
+        Files.writeString(temporary, yaml.saveToString(), StandardCharsets.UTF_8);
+        try {
+            Files.move(
+                    temporary,
+                    path,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+            Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 }

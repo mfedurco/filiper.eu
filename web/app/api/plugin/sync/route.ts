@@ -8,23 +8,40 @@ import {
   pushForPlugin,
   rememberLanguage,
 } from "@/lib/plugin-sync";
+import {
+  allowRequest,
+  BodyTooLarge,
+  clientAddress,
+  InvalidBody,
+  readLimitedJson,
+} from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function rejected(status: number) {
-  return Response.json({ error: "rejected" }, { status });
+  return Response.json(
+    { error: "rejected" },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function POST(request: Request) {
-  const length = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(length) && length > 2_000_000) {
-    return rejected(413);
+  const address = clientAddress(request);
+  if (!allowRequest(`plugin:${address}`, 240, 60_000)) {
+    return Response.json(
+      { error: "rejected" },
+      { status: 429, headers: { "Cache-Control": "no-store", "Retry-After": "60" } },
+    );
   }
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
+    body = await readLimitedJson(request);
+  } catch (error) {
+    if (error instanceof BodyTooLarge) return rejected(413);
+    if (!(error instanceof InvalidBody)) {
+      return Response.json({ error: "unavailable" }, { status: 503 });
+    }
     return rejected(400);
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) {

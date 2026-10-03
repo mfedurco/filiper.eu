@@ -31,10 +31,13 @@ language:
 
 # HTTP API pre starší web sync. Nový portál používa server-key.
 web:
-  enabled: true
-  bind: 0.0.0.0
+  enabled: false
+  bind: 127.0.0.1
   port: 8765
+  # Povinný pri zapnutí starého API. Bez tokenu sa API nespustí.
   api-token: ""
+  # Voliteľný presný web origin pre CORS, napríklad https://vyprava.filiper.eu.
+  cors-origin: ""
 
 # Hráčske texty. messages.sk a messages.en. Chýbajúci kľúč doplní plugin zo svojej kópie.
 messages:

@@ -6,6 +6,7 @@ import { ensurePlayerProfileColumns } from "@/lib/player-profile";
 import { ensureServerKeyColumn, serverKeyMatches } from "@/lib/server-key";
 
 const GOAL_KINDS = new Set(["daily", "weekly", "long_term", "shared", "campaign", "party"]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type PluginLoad = {
   expedition: {
@@ -194,7 +195,7 @@ export async function pushForPlugin(serverId: string, body: unknown): Promise<vo
 }
 
 async function requireOwned(client: PoolClient, serverId: string, expeditionId: string): Promise<void> {
-  if (!/^[0-9a-f-]{36}$/i.test(expeditionId)) throw new PluginPayload();
+  if (!UUID.test(expeditionId)) throw new PluginPayload();
   const found = await client.query("select 1 from expeditions where id = $1 and server_id = $2", [
     expeditionId,
     serverId,
@@ -210,7 +211,7 @@ async function pushPlayer(
   goals: Record<string, unknown>,
 ): Promise<void> {
   const mcUuid = String(snapshot.uuid ?? "");
-  if (!/^[0-9a-f-]{36}$/i.test(mcUuid)) throw new PluginPayload();
+  if (!UUID.test(mcUuid)) throw new PluginPayload();
   const nextName = clip(String(snapshot.name ?? "Unknown"), 16);
   const existing = await client.query<{ name: string; name_note: string | null }>(
     "select name, name_note from players where server_id = $1 and mc_uuid = $2",
@@ -234,9 +235,9 @@ async function pushPlayer(
     [
       mcUuid,
       nextName,
-      Math.max(1, integer(snapshot.chapter, 1)),
-      integer(snapshot.totalPoints, 0),
-      integer(snapshot.weeklyPoints, 0),
+      bounded(snapshot.chapter, 1, 1, 99),
+      bounded(snapshot.totalPoints, 0, 0, 1_000_000_000),
+      bounded(snapshot.weeklyPoints, 0, 0, 1_000_000_000),
       blankToNull(snapshot.partyId),
       serverId,
       nameNote,
@@ -261,9 +262,9 @@ async function pushPlayer(
       expeditionId,
       serverId,
       nextName,
-      integer(snapshot.totalPoints, 0),
-      integer(snapshot.weeklyPoints, 0),
-      Math.max(1, integer(snapshot.chapter, 1)),
+      bounded(snapshot.totalPoints, 0, 0, 1_000_000_000),
+      bounded(snapshot.weeklyPoints, 0, 0, 1_000_000_000),
+      bounded(snapshot.chapter, 1, 1, 99),
     ],
   );
   await client.query(
@@ -273,6 +274,7 @@ async function pushPlayer(
   const quests = asRecord(snapshot.quests);
   const keys = Object.keys(quests).slice(0, 400);
   for (const key of keys) {
+    if (!isStableKey(key)) throw new PluginPayload();
     const row = asRecord(quests[key]);
     const kind = String(row.goalKind ?? "campaign");
     await ensureGoal(client, key, kind, goalOf(goals, key));
@@ -280,7 +282,7 @@ async function pushPlayer(
       `insert into player_progress (
          player_id, goal_id, expedition_id, server_id, current_amount, completed, updated_at
        ) values ($1, $2, $3, $4, $5, $6, now())`,
-      [playerId, key, expeditionId, serverId, integer(row.current, 0), bool(row.completed)],
+      [playerId, key, expeditionId, serverId, bounded(row.current, 0, 0, 1_000_000_000), bool(row.completed)],
     );
   }
 }
@@ -293,7 +295,7 @@ async function pushShared(
   goals: Record<string, unknown>,
 ): Promise<void> {
   const questKey = String(snapshot.questKey ?? "");
-  if (!questKey) throw new PluginPayload();
+  if (!isStableKey(questKey)) throw new PluginPayload();
   await ensureGoal(client, questKey, "shared", goalOf(goals, questKey));
   await client.query(
     `insert into shared_goal_state (
@@ -309,7 +311,7 @@ async function pushShared(
       questKey,
       expeditionId,
       serverId,
-      integer(snapshot.progress, 0),
+      bounded(snapshot.progress, 0, 0, 1_000_000_000),
       bool(snapshot.completed),
       blankToNull(snapshot.periodKey),
     ],
@@ -331,6 +333,7 @@ async function pushParty(
   const partyKey = String(snapshot.partyId ?? "");
   if (!partyKey) throw new PluginPayload();
   const questKey = blankToNull(snapshot.questKey);
+  if (questKey && !isStableKey(questKey)) throw new PluginPayload();
   const leader = blankToNull(snapshot.leader);
   await client.query(
     `insert into parties (
@@ -350,9 +353,9 @@ async function pushParty(
       expeditionId,
       clip(partyKey, 64),
       clip(String(snapshot.name ?? ""), 64),
-      leader && /^[0-9a-f-]{36}$/i.test(leader) ? leader : null,
+      leader && UUID.test(leader) ? leader : null,
       questKey,
-      integer(snapshot.progress, 0),
+      bounded(snapshot.progress, 0, 0, 1_000_000_000),
       bool(snapshot.completed),
     ],
   );
@@ -360,7 +363,7 @@ async function pushParty(
   await ensureGoal(client, questKey, "party", goalOf(goals, questKey));
   const contributions = asRecord(snapshot.contributions);
   for (const [mcUuid, amount] of Object.entries(contributions).slice(0, 200)) {
-    if (!/^[0-9a-f-]{36}$/i.test(mcUuid)) continue;
+    if (!UUID.test(mcUuid)) continue;
     const found = await client.query<{ id: string }>(
       "select id::text as id from players where server_id = $1 and mc_uuid = $2",
       [serverId, mcUuid],
@@ -372,7 +375,7 @@ async function pushParty(
        values ($1, $2, $3, $4, $5, now())
        on conflict (server_id, expedition_id, goal_id, player_id) where expedition_id is not null
        do update set amount = excluded.amount, updated_at = now()`,
-      [questKey, playerId, expeditionId, serverId, integer(amount, 0)],
+      [questKey, playerId, expeditionId, serverId, bounded(amount, 0, 0, 1_000_000_000)],
     );
   }
 }
@@ -385,7 +388,7 @@ async function insertContributions(
   contributions: Record<string, unknown>,
 ): Promise<void> {
   for (const [mcUuid, amount] of Object.entries(contributions).slice(0, 200)) {
-    if (!/^[0-9a-f-]{36}$/i.test(mcUuid)) continue;
+    if (!UUID.test(mcUuid)) continue;
     const found = await client.query<{ id: string }>(
       "select id::text as id from players where server_id = $1 and mc_uuid = $2",
       [serverId, mcUuid],
@@ -395,7 +398,7 @@ async function insertContributions(
     await client.query(
       `insert into contributions (goal_id, player_id, expedition_id, server_id, amount, updated_at)
        values ($1, $2, $3, $4, $5, now())`,
-      [goalId, playerId, expeditionId, serverId, integer(amount, 0)],
+      [goalId, playerId, expeditionId, serverId, bounded(amount, 0, 0, 1_000_000_000)],
     );
   }
 }
@@ -406,6 +409,7 @@ async function ensureGoal(
   fallbackKind: string,
   meta: GoalMeta | null,
 ): Promise<void> {
+  if (!isStableKey(goalId)) throw new PluginPayload();
   if (meta && GOAL_KINDS.has(meta.goalKind)) {
     await client.query(
       `insert into goals (
@@ -452,11 +456,13 @@ function goalOf(goals: Record<string, unknown>, key: string): GoalMeta | null {
     description: String(row.description ?? ""),
     objectiveType: String(row.objectiveType ?? "BREAK_BLOCK"),
     targets,
-    amount: integer(row.amount, 1),
-    points: integer(row.points, 0),
-    minChapter: integer(row.minChapter, 1),
+    amount: bounded(row.amount, 1, 1, 1_000_000),
+    points: bounded(row.points, 0, 0, 10_000),
+    minChapter: bounded(row.minChapter, 1, 1, 99),
     chapterId: blankToNull(row.chapterId),
-    chapterOrder: row.chapterOrder == null || row.chapterOrder === "" ? null : integer(row.chapterOrder, 0),
+    chapterOrder: row.chapterOrder == null || row.chapterOrder === ""
+      ? null
+      : bounded(row.chapterOrder, 1, 1, 99),
     rewardsJson: String(row.rewardsJson ?? "[]"),
   };
 }
@@ -472,7 +478,7 @@ function asArray(value: unknown): unknown[] {
 
 export async function rememberLanguage(serverId: string, uuid: string, language: string): Promise<void> {
   const chosen = language === "sk" || language === "en" ? language : "";
-  if (!isServerId(serverId) || !/^[0-9a-f-]{36}$/i.test(uuid) || !chosen) {
+  if (!isServerId(serverId) || !UUID.test(uuid) || !chosen) {
     throw new PluginPayload();
   }
   await ensurePlayerProfileColumns();
@@ -492,6 +498,10 @@ function integer(value: unknown, fallback: number): number {
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.trunc(number);
+}
+
+function bounded(value: unknown, fallback: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, integer(value, fallback)));
 }
 
 function bool(value: unknown): boolean {
@@ -515,4 +525,8 @@ function jsonText(value: string): string {
   } catch {
     return "[]";
   }
+}
+
+function isStableKey(value: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(value);
 }

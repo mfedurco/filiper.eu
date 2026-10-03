@@ -5,7 +5,7 @@ let columnReady: Promise<void> | null = null;
 
 export function ensureServerKeyColumn(): Promise<void> {
   if (!columnReady) {
-    columnReady = dbQuery("alter table servers add column if not exists key_hash text")
+    columnReady = dbQuery("select key_hash from servers limit 0")
       .then(() => undefined)
       .catch((error: unknown) => {
         columnReady = null;

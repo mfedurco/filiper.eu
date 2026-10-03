@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { appOrigin } from "@/lib/security";
 
 export const GOOGLE_COOKIE = "vyprava_google";
 const STATE_COOKIE = "vyprava_google_state";
@@ -25,10 +26,7 @@ export function googleConfigured(): boolean {
 }
 
 export function requestOrigin(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") ?? "https";
-  if (forwarded) return `${proto}://${forwarded.split(",")[0].trim()}`;
-  return new URL(request.url).origin;
+  return appOrigin(request.url);
 }
 
 export function safeNext(value: string | null): string {
@@ -101,8 +99,13 @@ export async function exchangeCode(origin: string, code: string): Promise<Google
     headers: { authorization: `Bearer ${token.access_token}` },
   });
   if (!profileResponse.ok) return null;
-  const profile = (await profileResponse.json()) as { sub?: string; email?: string; name?: string };
-  if (!profile.sub) return null;
+  const profile = (await profileResponse.json()) as {
+    sub?: string;
+    email?: string;
+    email_verified?: boolean;
+    name?: string;
+  };
+  if (!profile.sub || !profile.email || profile.email_verified !== true) return null;
   return {
     sub: profile.sub,
     email: profile.email ?? "",

@@ -53,13 +53,16 @@ Requires **Gradle 9.1+** (wrapper included). Ubuntu OpenJDK `25.0.4.1` breaks ol
 
 ### HTTP JSON API (for web / Supabase sync)
 
-Enabled by default on port **8765**:
+The legacy API is disabled by default. If it is still needed, bind it to a private
+interface and set a long random `web.api-token`; it refuses to start without one.
+The portal/server-key path does not use this listener.
 
 - `GET /api/health`
 - `GET /api/campaign|daily|weekly|longterm|shared|party-quests`
 - `GET /api/leaderboard|players|parties`
 
-CORS is open for the dashboard. Optional `web.api-token` → clients send `X-Vyprava-Token`.
+Clients send `X-Vyprava-Token`. Browser CORS is off unless one exact
+`web.cors-origin` is configured.
 
 ## Web (Next.js + Neon)
 
@@ -79,6 +82,7 @@ npm run dev                  # http://127.0.0.1:43141
 Set in `.env.local` or the host, never commit the values:
 
 - `DATABASE_URL` — pooled Neon connection for the Next.js server. If it is missing, public pages stay empty instead of crashing.
+- `APP_ORIGIN` — canonical portal origin, normally `https://vyprava.filiper.eu`. OAuth and write-origin checks do not trust forwarded host headers.
 - `ADMIN_SECRET` — known only to the person who saves the first Google account as `spravca` with every server. It is not a shared admin password.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — the existing Google OAuth client. Sign-in starts at `/api/auth/google` and returns through `/api/auth/google/callback`. Production redirect URI is `https://vyprava.filiper.eu/api/auth/google/callback`. If either value is missing, Google sign-in stays off and `/admin` does not write.
 
@@ -99,13 +103,29 @@ The screen stays a server list: each server shows its active expedition, dates, 
 ### Deploy on Vercel + Cloudflare (`filiper.eu`)
 
 1. Import the repo in Vercel; **Root Directory** = `web`.
-2. Add `DATABASE_URL`, `ADMIN_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` from `.env.example`.
+2. Add `DATABASE_URL`, `APP_ORIGIN`, `ADMIN_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` from `.env.example`.
 3. Deploy → note the `*.vercel.app` URL.
 4. In **Cloudflare DNS** for `filiper.eu`:
    - Type **CNAME**, Name `vyprava` (or `@` / preferred host), Target `cname.vercel-dns.com` (or the hostname Vercel shows).
    - Proxy status: DNS only (grey) or Proxied (orange) — both work; if Proxied, SSL mode Full (strict).
 5. In Vercel → Project → Domains → add `vyprava.filiper.eu` (or `filiper.eu` / path via rewrite).
 6. Wait for certificate + DNS propagation.
+
+### Database changes and recovery
+
+Apply `web/neon/*.sql` in numeric order through a reviewed deployment step. Never
+run migrations from a public request. Before each migration, create a Neon restore
+point (or verify point-in-time recovery), and periodically test a restore into a
+separate branch. `007_security_hardening.sql` must be applied before a public
+launch; it adds credential/claim constraints and indexes.
+
+Keep `DATABASE_URL`, `ADMIN_SECRET`, Google credentials, and raw server keys only
+in the deployment/server secret stores. Rotate a server key in `/admin` after any
+suspected disclosure. The portal has no complete alerting stack yet: operations
+must monitor Vercel error rates, Neon connection/storage limits, and failed plugin
+sync warnings. A `200` from `/api/public/{serverId}` proves only that the public
+route responded; verify that an expected active expedition and recent leaderboard
+data are present as the application-level health check.
 
 ## Repo layout
 

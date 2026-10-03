@@ -408,14 +408,6 @@ export async function expeditionAccess(id: string): Promise<{ serverId: string; 
   return { serverId: row.server_id, status: row.status };
 }
 
-async function requireDraft(id: string) {
-  const access = await expeditionAccess(id);
-  if (!access) throw new Error("Výprava sa nenašla.");
-  if (access.status !== "draft") {
-    throw new Error("Táto výprava nie je návrh. Polia a úlohy sa menia len v kópii.");
-  }
-}
-
 export async function saveExpeditionMeta(input: {
   id: string;
   title: string;
@@ -429,16 +421,19 @@ export async function saveExpeditionMeta(input: {
   const ends = bratislavaSql(input.endsAt);
   if (input.startsAt.trim() && !starts) throw new Error("Dátum od nie je platný.");
   if (input.endsAt.trim() && !ends) throw new Error("Dátum do nie je platný.");
-  await requireDraft(input.id);
-  await dbQuery(
+  const updated = await dbQuery<{ id: string }>(
     `update expeditions
      set title = $2,
          description = $3,
          starts_at = case when $4::text is null then null else $4::timestamp at time zone 'Europe/Bratislava' end,
          ends_at = case when $5::text is null then null else $5::timestamp at time zone 'Europe/Bratislava' end
-     where id = $1`,
+     where id = $1 and status = 'draft'
+     returning id::text as id`,
     [input.id, title, input.description.trim().slice(0, 600), starts, ends],
   );
+  if (updated.length !== 1) {
+    throw new Error("Táto výprava už nie je návrh.");
+  }
 }
 
 export async function startExpedition(id: string) {
@@ -584,10 +579,13 @@ export function parseQuestForm(form: FormData) {
 
 export async function saveQuest(expeditionId: string, questId: string | null, form: FormData) {
   const parsed = parseQuestForm(form);
-  await requireDraft(expeditionId);
   await withTx(async (client) => {
-    const found = await client.query("select 1 from expeditions where id = $1", [expeditionId]);
+    const found = await client.query<{ status: string }>(
+      "select status::text as status from expeditions where id = $1 for update",
+      [expeditionId],
+    );
     if (!found.rowCount) throw new Error("Výprava sa nenašla.");
+    if (found.rows[0]?.status !== "draft") throw new Error("Táto výprava už nie je návrh.");
     if (questId) {
       const updated = await client.query(
         `update quest_definitions
@@ -650,9 +648,14 @@ export async function saveQuest(expeditionId: string, questId: string | null, fo
 }
 
 export async function removeQuest(expeditionId: string, questId: string) {
-  await requireDraft(expeditionId);
   const removed = await dbQuery(
-    "delete from quest_definitions where expedition_id = $1 and id = $2 returning id",
+    `delete from quest_definitions q
+     where q.expedition_id = $1 and q.id = $2
+       and exists (
+         select 1 from expeditions e
+         where e.id = q.expedition_id and e.status = 'draft'
+       )
+     returning q.id`,
     [expeditionId, questId],
   );
   if (!removed.length) throw new Error("Úloha sa nenašla.");

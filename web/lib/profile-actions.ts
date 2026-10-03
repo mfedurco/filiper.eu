@@ -5,15 +5,20 @@ import { readSession } from "@/lib/google-auth";
 import { claimProfile, isPlayerUuid, saveProfileAbout } from "@/lib/player-profile";
 import { rememberSignedIn } from "@/lib/portal-accounts";
 import { isServerId } from "@/lib/portal";
+import { allowRequest, requireTrustedMutation } from "@/lib/security";
 
 export async function claimProfileAction(formData: FormData) {
+  await requireTrustedMutation();
   const session = await readSession();
   const serverId = String(formData.get("serverId") ?? "");
   const uuid = String(formData.get("uuid") ?? "");
   const code = String(formData.get("code") ?? "");
   if (!session) redirect(profilePath(serverId, uuid, "prihlasenie"));
-  const linked = await claimProfile(session.sub, code);
-  if (!linked || linked.serverId !== serverId || linked.uuid !== uuid) {
+  if (!allowRequest(`claim:${session.sub}`, 10, 15 * 60_000)) {
+    redirect(profilePath(serverId, uuid, "kod"));
+  }
+  const linked = await claimProfile(session.sub, serverId, uuid, code);
+  if (!linked) {
     redirect(profilePath(serverId, uuid, "kod"));
   }
   try {
@@ -25,6 +30,7 @@ export async function claimProfileAction(formData: FormData) {
 }
 
 export async function saveAboutAction(formData: FormData) {
+  await requireTrustedMutation();
   const session = await readSession();
   const serverId = String(formData.get("serverId") ?? "");
   const uuid = String(formData.get("uuid") ?? "");

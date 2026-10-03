@@ -24,6 +24,7 @@ import {
   type PortalRole,
 } from "@/lib/portal-accounts";
 import { ensureServerKeyColumn, generateServerKey, hashServerKey } from "@/lib/server-key";
+import { allowRequest, requireTrustedMutation } from "@/lib/security";
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 export type KeyResult = { ok: true; key: string } | { ok: false; message: string };
@@ -36,6 +37,11 @@ function fail(error: unknown): ActionResult {
 }
 
 async function gateServer(serverId: string): Promise<ActionResult | null> {
+  try {
+    await requireTrustedMutation();
+  } catch {
+    return { ok: false, message: "Požiadavka neprišla z portálu." };
+  }
   if (!googleConfigured()) return { ok: false, message: "Prihlásenie cez Google nie je nastavené." };
   if (!hasDatabase()) return { ok: false, message: "Databáza nie je pripojená." };
   const account = await requireSpravca();
@@ -58,8 +64,12 @@ function refresh() {
 }
 
 export async function bootstrapAction(formData: FormData) {
+  await requireTrustedMutation();
   const session = await readSession();
   if (!session || !adminConfigured()) redirect("/admin");
+  if (!allowRequest(`bootstrap:${session.sub}`, 5, 15 * 60_000)) {
+    redirect("/admin?chyba=1");
+  }
   const password = String(formData.get("secret") ?? "");
   if (!secretMatches(password)) redirect("/admin?chyba=1");
   try {
@@ -71,6 +81,7 @@ export async function bootstrapAction(formData: FormData) {
 }
 
 export async function setRoleAction(formData: FormData) {
+  await requireTrustedMutation();
   const actor = await requireSpravca();
   if (!actor?.allServers) redirect("/admin");
   const role = String(formData.get("role") ?? "");
@@ -96,6 +107,7 @@ export async function setRoleAction(formData: FormData) {
 }
 
 export async function logoutAction() {
+  await requireTrustedMutation();
   await clearSession();
   redirect("/admin");
 }
