@@ -7,10 +7,7 @@ export async function GET() {
   try {
     const data = await getCampaign();
     return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Chyba" },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Dáta momentálne nie sú dostupné." }, { status: 503 });
   }
 }

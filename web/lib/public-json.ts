@@ -31,7 +31,6 @@ export async function getPublicSnapshot(rawServerId: string): Promise<PublicSnap
   if (!isServerId(serverId) || !hasDatabase()) return empty(isServerId(serverId) ? serverId : "");
 
   try {
-    await dbQuery("select changed from apply_expedition_schedule(now(), $1)", [serverId]);
     const expeditions = await dbQuery<{ id: string; title: string; description: string | null }>(
       `select id::text, title, description
        from expeditions

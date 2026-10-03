@@ -6,10 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     return NextResponse.json(await getLeaderboard());
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Chyba" },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Dáta momentálne nie sú dostupné." }, { status: 503 });
   }
 }

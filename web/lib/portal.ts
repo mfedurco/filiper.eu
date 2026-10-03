@@ -176,10 +176,6 @@ export const getPortalMeta = cache(async (): Promise<PortalMeta> => {
     const servers = await dbQuery<ServerOption>(
       "select id, label from servers order by label, id",
     );
-    await dbQuery(
-      "select changed from apply_expedition_schedule(now(), $1)",
-      [serverId],
-    );
     const rows = await dbQuery<{
       id: string;
       slug: string;
