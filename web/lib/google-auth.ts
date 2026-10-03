@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { appOrigin } from "@/lib/security";
+import { appOrigin } from "./security";
 
 export const GOOGLE_COOKIE = "vyprava_google";
 const STATE_COOKIE = "vyprava_google_state";

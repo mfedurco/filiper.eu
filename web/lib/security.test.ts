@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   allowRequest,
   appOrigin,
@@ -7,34 +7,21 @@ import {
   readLimitedJson,
 } from "./security";
 
-const originalOrigin = process.env.APP_ORIGIN;
-const originalNodeEnv = process.env.NODE_ENV;
-
 afterEach(() => {
-  if (originalOrigin === undefined) delete process.env.APP_ORIGIN;
-  else process.env.APP_ORIGIN = originalOrigin;
-  Object.defineProperty(process.env, "NODE_ENV", {
-    value: originalNodeEnv,
-    configurable: true,
-    writable: true,
-  });
+  vi.unstubAllEnvs();
 });
 
 describe("canonical origin", () => {
   it("uses the configured origin instead of request host headers", () => {
-    process.env.APP_ORIGIN = "https://vyprava.filiper.eu";
+    vi.stubEnv("APP_ORIGIN", "https://vyprava.filiper.eu");
     expect(appOrigin("https://attacker.example/path")).toBe("https://vyprava.filiper.eu");
     expect(isTrustedOrigin("https://vyprava.filiper.eu", appOrigin())).toBe(true);
     expect(isTrustedOrigin("https://attacker.example", appOrigin())).toBe(false);
   });
 
   it("rejects malformed origin configuration in production", () => {
-    process.env.APP_ORIGIN = "https://vyprava.filiper.eu/redirect";
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "production",
-      configurable: true,
-      writable: true,
-    });
+    vi.stubEnv("APP_ORIGIN", "https://vyprava.filiper.eu/redirect");
+    vi.stubEnv("NODE_ENV", "production");
     expect(appOrigin("https://attacker.example")).toBe("https://vyprava.filiper.eu");
   });
 });
