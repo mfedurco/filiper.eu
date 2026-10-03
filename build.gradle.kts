@@ -21,8 +21,8 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.124-stable")
     compileOnly("com.google.code.gson:gson:2.14.0")
-    implementation("org.postgresql:postgresql:42.7.7")
-    implementation("com.zaxxer:HikariCP:6.3.0")
+    implementation("org.postgresql:postgresql:42.7.13")
+    implementation("com.zaxxer:HikariCP:7.1.0")
     implementation("org.slf4j:slf4j-jdk14:2.0.17")
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
